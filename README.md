@@ -7,7 +7,7 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
 - **10 supported stocks**: NVDA, AAPL, GOOGL, MSFT, AMZN, TSM, META, AVGO, TSLA, BRK.B
 - **Google sign-in** (or **Dev login** in Cursor’s browser when `ALLOW_DEV_LOGIN=true`)
 - **Tabs**: Portfolio, Tracked Stocks, All Stocks
-- **Live prices**: Polling every 5s; Track/Untrack symbols for the Tracked tab
+- **Live prices**: SSE stream (real-time); uses Alpaca when configured, otherwise simulated data
 - **Positions & orders**: Persisted in PostgreSQL (Prisma)
 - **Buy / Sell**: Market orders at the current quote; positions update in DB
 
@@ -46,7 +46,18 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
      - `NEXTAUTH_URL=http://localhost:3000` **(required — without it the app can stick on “Loading…”)**
      - `NEXTAUTH_SECRET` (e.g. `openssl rand -base64 32`)
 
-4. **Run**
+4. **Alpaca (optional — real market data)**
+
+   - Sign up at [Alpaca](https://app.alpaca.markets) (free paper account)
+   - Create API keys under Paper Trading
+   - Add to `.env.local`:
+     ```
+     ALPACA_API_KEY_ID=your_key_id
+     ALPACA_SECRET_KEY=your_secret
+     ```
+   - With these set, live quotes and charts use Alpaca’s IEX feed. Without them, simulated data is used.
+
+5. **Run**
 
    ```bash
    npm run dev
@@ -57,7 +68,7 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
 ## Data
 
 - **Positions, orders, and tracked symbols** are stored in PostgreSQL via Prisma (`prisma/schema.prisma`). Users are upserted on first request.
-- **Quotes** are still mock server-side (`src/lib/quotes-server.ts`). Replace with your pipeline for live prices.
+- **Quotes & charts**: When `ALPACA_API_KEY_ID` and `ALPACA_SECRET_KEY` are set, the app uses Alpaca’s Market Data API (snapshots for live prices, bars for historical charts). Otherwise, simulated data is used.
 
 Types: `src/types/index.ts`. API client: `src/lib/api.ts`.
 

@@ -2,7 +2,7 @@
 
 import { useSessionWithTimeout } from "@/hooks/useSessionWithTimeout";
 import Link from "next/link";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Nav } from "@/components/Nav";
 import { Tabs, type TabId } from "@/components/Tabs";
 import { StockRow } from "@/components/StockRow";
@@ -11,7 +11,7 @@ import { OrderModal } from "@/components/OrderModal";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { StockExpandedView } from "@/components/StockExpandedView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useQuotes } from "@/hooks/useQuotes";
+import { useLiveQuotes } from "@/hooks/useLiveQuotes";
 import { usePositions } from "@/hooks/usePositions";
 import { useTrackedSymbols } from "@/hooks/useTrackedSymbols";
 import { trackSymbol, untrackSymbol } from "@/lib/api";
@@ -19,7 +19,7 @@ import type { SupportedSymbol } from "@/lib/constants";
 
 export default function HomePage() {
   const { data: session, status } = useSessionWithTimeout();
-  const { data: quotes, isLoading: quotesLoading, error: quotesError } = useQuotes();
+  const { data: quotes, isLoading: quotesLoading, error: quotesError, isLive, status: quoteStatus } = useLiveQuotes();
   const { data: positions = [], isLoading: positionsLoading } = usePositions();
   const { data: trackedSymbols = [] } = useTrackedSymbols();
   const queryClient = useQueryClient();
@@ -27,6 +27,10 @@ export default function HomePage() {
   const [tradeSymbol, setTradeSymbol] = useState<SupportedSymbol | null>(null);
   const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
   const [expandedSymbol, setExpandedSymbol] = useState<SupportedSymbol | null>(null);
+
+  useEffect(() => {
+    setExpandedSymbol(null);
+  }, [activeTab]);
 
   const trackMutation = useMutation({
     mutationFn: trackSymbol,
@@ -45,6 +49,25 @@ export default function HomePage() {
 
   const quoteFor = (symbol: SupportedSymbol) => quotes?.find((q) => q.symbol === symbol);
   const trackedQuotes = quotes?.filter((q) => trackedSymbols.includes(q.symbol)) ?? [];
+
+  const livePositions = useMemo(() => {
+    return positions.map((pos) => {
+      const q = quotes?.find((x) => x.symbol === pos.symbol);
+      if (!q) return pos;
+      const marketValue = pos.quantity * q.price;
+      const totalCost = pos.quantity * pos.averageCost;
+      const gainLoss = marketValue - totalCost;
+      const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
+      return {
+        ...pos,
+        currentPrice: q.price,
+        marketValue,
+        totalCost,
+        gainLoss,
+        gainLossPercent,
+      };
+    });
+  }, [positions, quotes]);
 
   if (status === "loading") {
     return (
@@ -83,7 +106,24 @@ export default function HomePage() {
     <>
       <Nav />
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <Tabs active={activeTab} onChange={setActiveTab} />
+        <div className="flex items-center gap-3 mb-6">
+          <Tabs active={activeTab} onChange={setActiveTab} />
+          {isLive && (
+            <span className="ml-auto flex items-center gap-1.5 text-xs" aria-label={quoteStatus === "streaming" ? "Live streaming" : "Polling every 2 seconds"}>
+              {quoteStatus === "streaming" ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-rh-green animate-pulse" />
+                  <span className="text-rh-green">Live</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+                  <span className="text-yellow-500">2s Refresh</span>
+                </>
+              )}
+            </span>
+          )}
+        </div>
 
         {activeTab === "portfolio" && (
           <section>
@@ -92,7 +132,7 @@ export default function HomePage() {
               <p className="text-rh-muted text-sm">Loading positions…</p>
             ) : positions.length > 0 ? (
               <div className="space-y-2">
-                {positions.map((pos) => (
+                {livePositions.map((pos) => (
                   <div key={pos.symbol}>
                     <PositionRow
                       position={pos}

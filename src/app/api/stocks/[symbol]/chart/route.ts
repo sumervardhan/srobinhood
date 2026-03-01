@@ -1,7 +1,9 @@
 /**
- * Historical price data for a stock. Replace with your pipeline (DB, parquet, API).
+ * Historical price data for a stock.
+ * Uses Alpaca when configured, otherwise simulated data.
  */
 import { NextResponse } from "next/server";
+import { fetchBars, isAlpacaConfigured } from "@/lib/alpaca";
 import { getPriceForSymbol } from "@/lib/quotes-server";
 import { STOCK_SYMBOLS } from "@/lib/constants";
 
@@ -44,6 +46,24 @@ export async function GET(
 
   if (!symbol || !(STOCK_SYMBOLS as readonly string[]).includes(symbol)) {
     return NextResponse.json({ error: "Invalid symbol" }, { status: 400 });
+  }
+
+  if (isAlpacaConfigured()) {
+    try {
+      const now = new Date();
+      const ms = RANGE_MS[range] ?? RANGE_MS["1M"];
+      const start = new Date(now.getTime() - ms);
+      const end = new Date(now.getTime() + 60_000);
+
+      const timeframe = range === "1D" ? "1Min" : range === "5D" ? "1Hour" : "1Day";
+      const series = await fetchBars(symbol, timeframe, start, end);
+
+      if (series.length > 0) {
+        return NextResponse.json({ symbol, range, series });
+      }
+    } catch (e) {
+      console.warn("[chart] Alpaca bars failed, falling back to mock:", e);
+    }
   }
 
   const series = generateMockSeries(symbol, range);
