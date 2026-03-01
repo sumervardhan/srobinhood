@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --rh-black: #0d0d0d;
+  --rh-card: #161616;
+  --rh-border: #2a2a2a;
+  --rh-green: #00c805;
+  --rh-red: #f6465d;
+}
+
+body {
+  background: var(--rh-black);
+  color: #fff;
+}
+
+/* Live price tick animation */
+@keyframes tick-up {
+  from { background-color: rgba(0, 200, 5, 0.25); }
+  to { background-color: transparent; }
+}
+@keyframes tick-down {
+  from { background-color: rgba(246, 70, 93, 0.25); }
+  to { background-color: transparent; }
+}
+.tick-up { animation: tick-up 0.6s ease-out; }
+.tick-down { animation: tick-down 0.6s ease-out; }
