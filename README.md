@@ -5,10 +5,11 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
 ## Features
 
 - **10 supported stocks**: NVDA, AAPL, GOOGL, MSFT, AMZN, TSM, META, AVGO, TSLA, BRK.B
-- **Google sign-in**: Log in with your Google account (NextAuth)
-- **Live prices**: Polling every 5s (replace with WebSocket when your pipeline supports it)
-- **Positions**: View holdings; data from your backend
-- **Buy / Sell**: Market orders at the current quote (backend executes at live rate)
+- **Google sign-in** (or **Dev login** in Cursor’s browser when `ALLOW_DEV_LOGIN=true`)
+- **Tabs**: Portfolio, Tracked Stocks, All Stocks
+- **Live prices**: Polling every 5s; Track/Untrack symbols for the Tracked tab
+- **Positions & orders**: Persisted in PostgreSQL (Prisma)
+- **Buy / Sell**: Market orders at the current quote; positions update in DB
 
 ## Setup
 
@@ -19,7 +20,22 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
    cp .env.example .env.local
    ```
 
-2. **Google OAuth**
+2. **PostgreSQL (local)**
+
+   - **DATABASE_URL** is set in `.env.local` for the Docker-based local DB.
+   - **If you installed Docker via Homebrew:** Compose is not included. Install it so the commands below work:
+     ```bash
+     brew install docker-compose
+     ```
+   - Start Postgres and run migrations:
+     ```bash
+     npm run db:up
+     npm run db:migrate
+     ```
+     (First run of `db:migrate` will prompt for a migration name; use `init` or leave default.)
+   - To use a **hosted Postgres** (Neon, Supabase, RDS, etc.) instead of Docker: set `DATABASE_URL` in `.env.local` to that connection string and run only `npm run db:migrate`.
+
+3. **Google OAuth**
 
    - Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
    - Create OAuth 2.0 Client ID (Web application)
@@ -30,7 +46,7 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
      - `NEXTAUTH_URL=http://localhost:3000` **(required — without it the app can stick on “Loading…”)**
      - `NEXTAUTH_SECRET` (e.g. `openssl rand -base64 32`)
 
-3. **Run**
+4. **Run**
 
    ```bash
    npm run dev
@@ -38,24 +54,26 @@ A Robinhood-style frontend for trading the top 10 US stocks by market cap. The U
 
    Open [http://localhost:3000](http://localhost:3000). Sign in with Google, then use the dashboard.
 
-## Data pipeline integration
+## Data
 
-The UI talks to these APIs. Replace the mock implementations with your pipeline:
+- **Positions, orders, and tracked symbols** are stored in PostgreSQL via Prisma (`prisma/schema.prisma`). Users are upserted on first request.
+- **Quotes** are still mock server-side (`src/lib/quotes-server.ts`). Replace with your pipeline for live prices.
 
-| What        | Frontend expects                         | You provide |
-|------------|------------------------------------------|-------------|
-| **Quotes** | `GET /api/stocks/quotes` → `StockQuote[]` | Serve from parquet/DB/stream; optionally WebSocket for live tickers. |
-| **Positions** | `GET /api/portfolio/positions` → `Position[]` | Resolve user from session; read from your DB. |
-| **Orders** | `POST /api/orders` (body: `OrderRequest`) → `Order` | Validate, execute at live rate, persist to DB. |
-
-- **Auth**: Session comes from NextAuth; use `getServerSession(authOptions)` in API routes to get `session.user.id` and scope positions/orders by user.
-- **Live prices**: Currently the app polls `/api/stocks/quotes` every 5s. You can add a WebSocket endpoint and switch the client to it when your pipeline supports real-time quotes.
-
-Types are in `src/types/index.ts`; API client in `src/lib/api.ts`.
+Types: `src/types/index.ts`. API client: `src/lib/api.ts`.
 
 ## Scripts
 
 - `npm run dev` — development server
 - `npm run build` — production build
-- `npm run start` — run production server
+- `npm run start` — production server
 - `npm run lint` — ESLint
+- `npm run db:up` — start local Postgres (Docker)
+- `npm run db:down` — stop local Postgres
+- `npm run db:migrate` — run Prisma migrations
+- `npm run db:studio` — open Prisma Studio (DB UI)
+
+## Production
+
+- **Database:** Use a **managed Postgres** (e.g. Neon, Supabase, AWS RDS). Set `DATABASE_URL` in your hosting environment (Vercel, Railway, etc.); do **not** run the app against the same Docker Compose stack as in dev.
+- **Migrations:** Run them in CI or as a deploy step, e.g. `npx prisma migrate deploy` (uses existing migrations; no prompt). Never run `migrate dev` in production.
+- **Secrets:** Keep `NEXTAUTH_SECRET`, `GOOGLE_*`, and `DATABASE_URL` in env only; no defaults or hardcoding for production.

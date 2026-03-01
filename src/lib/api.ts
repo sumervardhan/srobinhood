@@ -5,6 +5,7 @@
  */
 
 import type { OrderRequest, Order, Position, StockQuote } from "@/types";
+import type { SupportedSymbol } from "@/lib/constants";
 
 const BASE = typeof window === "undefined" ? "" : "";
 
@@ -30,5 +31,18 @@ export async function placeOrder(body: OrderRequest): Promise<Order> {
   return api<Order>("/api/orders", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export async function trackSymbol(symbol: SupportedSymbol): Promise<void> {
+  await api("/api/portfolio/tracked", {
+    method: "POST",
+    body: JSON.stringify({ symbol }),
+  });
+}
+
+export async function untrackSymbol(symbol: SupportedSymbol): Promise<void> {
+  await api(`/api/portfolio/tracked?symbol=${encodeURIComponent(symbol)}`, {
+    method: "DELETE",
   });
 }

@@ -19,6 +19,7 @@ export interface Position {
   gainLossPercent: number;
 }
 
+
 export interface OrderRequest {
   symbol: SupportedSymbol;
   side: "buy" | "sell";

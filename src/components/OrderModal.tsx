@@ -16,15 +16,30 @@ function formatPrice(n: number) {
   }).format(n);
 }
 
+function parseOrderError(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    try {
+      const parsed = JSON.parse(error.message) as { error?: string };
+      if (typeof parsed?.error === "string") return parsed.error;
+    } catch {
+      /* not JSON */
+    }
+    return error.message;
+  }
+  return "Something went wrong. Please try again.";
+}
+
 type Props = {
   symbol: SupportedSymbol;
   quote: StockQuote | undefined;
+  initialSide?: "buy" | "sell";
   onClose: () => void;
 };
 
-export function OrderModal({ symbol, quote, onClose }: Props) {
-  const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [quantity, setQuantity] = useState("");
+export function OrderModal({ symbol, quote, initialSide = "buy", onClose }: Props) {
+  const [side, setSide] = useState<"buy" | "sell">(initialSide);
+  const [mode, setMode] = useState<"shares" | "dollars">("shares");
+  const [inputValue, setInputValue] = useState("");
   const queryClient = useQueryClient();
 
   const mutate = useMutation({
@@ -38,13 +53,24 @@ export function OrderModal({ symbol, quote, onClose }: Props) {
 
   const name = SUPPORTED_STOCKS.find((s) => s.symbol === symbol)?.name ?? symbol;
   const price = quote?.price ?? 0;
-  const q = parseInt(quantity, 10) || 0;
+  const raw = mode === "shares"
+    ? parseFloat(inputValue) || 0
+    : (parseFloat(inputValue) || 0) / price;
+  const q = Math.max(0, Math.round(raw * 10000) / 10000);
   const total = price * q;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quantity || q <= 0) return;
+    if (!inputValue || q <= 0) return;
     mutate.mutate({ symbol, side, quantity: q, orderType: "market" });
+  };
+
+  const handleInputChange = (value: string) => {
+    if (mode === "shares") {
+      setInputValue(value.replace(/[^\d.]/g, "").replace(/^(\d*\.)(.*)\./, "$1$2").slice(0, 14));
+    } else {
+      setInputValue(value.replace(/[^\d.]/g, "").replace(/^(\d*\.)(.*)\./, "$1$2").slice(0, 14));
+    }
   };
 
   return (
@@ -119,29 +145,53 @@ export function OrderModal({ symbol, quote, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div className="flex gap-1 p-1 rounded-lg bg-rh-black border border-rh-border mb-3">
+            <button
+              type="button"
+              onClick={() => { setMode("shares"); setInputValue(""); }}
+              className={clsx(
+                "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                mode === "shares" ? "bg-rh-card text-rh-white" : "text-rh-muted hover:text-rh-white"
+              )}
+            >
+              Shares
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("dollars"); setInputValue(""); }}
+              className={clsx(
+                "flex-1 py-1.5 text-sm font-medium rounded-md transition-colors",
+                mode === "dollars" ? "bg-rh-card text-rh-white" : "text-rh-muted hover:text-rh-white"
+              )}
+            >
+              Dollars
+            </button>
+          </div>
           <div>
-            <label htmlFor="quantity" className="block text-sm text-rh-muted mb-1">
-              Quantity
+            <label htmlFor="amount" className="block text-sm text-rh-muted mb-1">
+              {mode === "shares" ? "Quantity" : "Amount"}
             </label>
             <input
-              id="quantity"
-              type="number"
-              min={1}
-              step={1}
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value.replace(/\D/g, "").slice(0, 8))}
-              className="w-full bg-rh-black border border-rh-border rounded-xl px-4 py-3 text-rh-white font-mono text-lg focus:outline-none focus:ring-2 focus:ring-rh-green focus:border-transparent"
-              placeholder="0"
+              id="amount"
+              type="text"
+              inputMode={mode === "shares" ? "numeric" : "decimal"}
+              value={inputValue}
+              onChange={(e) => handleInputChange(e.target.value)}
+              className="w-full bg-rh-black border border-rh-border rounded-xl px-4 py-3 text-rh-white font-mono text-lg focus:outline-none focus:ring-2 focus:ring-rh-green focus:border-transparent [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              placeholder={mode === "shares" ? "0" : "0.00"}
             />
           </div>
           {q > 0 && (
             <p className="text-sm text-rh-muted">
+              {mode === "dollars" && (
+                <>{q < 1 ? q.toFixed(4) : q.toFixed(2)} share{q !== 1 ? "s" : ""} · </>
+              )}
               Total: <span className="font-mono text-rh-white">{formatPrice(total)}</span>
             </p>
           )}
           <button
             type="submit"
-            disabled={!quantity || q <= 0 || mutate.isPending}
+            disabled={!inputValue || q <= 0 || mutate.isPending}
             className={clsx(
               "w-full py-3 rounded-xl font-semibold text-white transition-opacity disabled:opacity-50",
               side === "buy" ? "bg-rh-green text-rh-black" : "bg-rh-red"
@@ -155,7 +205,7 @@ export function OrderModal({ symbol, quote, onClose }: Props) {
           </button>
           {mutate.isError && (
             <p className="text-sm text-rh-red">
-              {mutate.error instanceof Error ? mutate.error.message : "Order failed"}
+              {parseOrderError(mutate.error)}
             </p>
           )}
         </form>

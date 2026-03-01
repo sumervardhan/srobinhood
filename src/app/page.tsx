@@ -4,25 +4,47 @@ import { useSessionWithTimeout } from "@/hooks/useSessionWithTimeout";
 import Link from "next/link";
 import { useState, useCallback } from "react";
 import { Nav } from "@/components/Nav";
+import { Tabs, type TabId } from "@/components/Tabs";
 import { StockRow } from "@/components/StockRow";
 import { PositionRow } from "@/components/PositionRow";
 import { OrderModal } from "@/components/OrderModal";
+import { PortfolioChart } from "@/components/PortfolioChart";
+import { StockExpandedView } from "@/components/StockExpandedView";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQuotes } from "@/hooks/useQuotes";
 import { usePositions } from "@/hooks/usePositions";
+import { useTrackedSymbols } from "@/hooks/useTrackedSymbols";
+import { trackSymbol, untrackSymbol } from "@/lib/api";
 import type { SupportedSymbol } from "@/lib/constants";
 
 export default function HomePage() {
   const { data: session, status } = useSessionWithTimeout();
   const { data: quotes, isLoading: quotesLoading, error: quotesError } = useQuotes();
   const { data: positions = [], isLoading: positionsLoading } = usePositions();
+  const { data: trackedSymbols = [] } = useTrackedSymbols();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState<TabId>("portfolio");
   const [tradeSymbol, setTradeSymbol] = useState<SupportedSymbol | null>(null);
+  const [tradeSide, setTradeSide] = useState<"buy" | "sell">("buy");
+  const [expandedSymbol, setExpandedSymbol] = useState<SupportedSymbol | null>(null);
 
-  const openTrade = useCallback((symbol: SupportedSymbol) => {
+  const trackMutation = useMutation({
+    mutationFn: trackSymbol,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio", "tracked"] }),
+  });
+  const untrackMutation = useMutation({
+    mutationFn: untrackSymbol,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["portfolio", "tracked"] }),
+  });
+
+  const openTrade = useCallback((symbol: SupportedSymbol, side?: "buy" | "sell") => {
     setTradeSymbol(symbol);
+    setTradeSide(side ?? "buy");
   }, []);
   const closeTrade = useCallback(() => setTradeSymbol(null), []);
 
   const quoteFor = (symbol: SupportedSymbol) => quotes?.find((q) => q.symbol === symbol);
+  const trackedQuotes = quotes?.filter((q) => trackedSymbols.includes(q.symbol)) ?? [];
 
   if (status === "loading") {
     return (
@@ -60,55 +82,125 @@ export default function HomePage() {
   return (
     <>
       <Nav />
-      <main className="max-w-4xl mx-auto px-4 py-6 space-y-8">
-        {positions.length > 0 && (
+      <main className="max-w-4xl mx-auto px-4 py-6">
+        <Tabs active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === "portfolio" && (
           <section>
-            <h2 className="text-lg font-semibold text-rh-white mb-3">Your positions</h2>
+            <PortfolioChart />
             {positionsLoading ? (
               <p className="text-rh-muted text-sm">Loading positions…</p>
-            ) : (
+            ) : positions.length > 0 ? (
               <div className="space-y-2">
                 {positions.map((pos) => (
-                  <PositionRow
-                    key={pos.symbol}
-                    position={pos}
-                    onTrade={openTrade}
-                  />
+                  <div key={pos.symbol}>
+                    <PositionRow
+                      position={pos}
+                      onTrade={openTrade}
+                      onExpand={(s) => setExpandedSymbol(expandedSymbol === s ? null : s)}
+                      isExpanded={expandedSymbol === pos.symbol}
+                    />
+                    {expandedSymbol === pos.symbol && (
+                      <StockExpandedView
+                        symbol={pos.symbol}
+                        quote={quoteFor(pos.symbol)}
+                        position={pos}
+                        onBuy={() => openTrade(pos.symbol, "buy")}
+                        onSell={() => openTrade(pos.symbol, "sell")}
+                      />
+                    )}
+                  </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-rh-muted text-sm">
+                No positions yet. Buy stocks from All Stocks to build your portfolio.
+              </p>
             )}
           </section>
         )}
 
-        <section>
-          <h2 className="text-lg font-semibold text-rh-white mb-3">Stocks</h2>
-          {quotesError && (
-            <p className="text-rh-red text-sm mb-2">
-              Failed to load prices. Retrying…
-            </p>
-          )}
-          {quotesLoading ? (
-            <p className="text-rh-muted text-sm">Loading prices…</p>
-          ) : quotes && quotes.length > 0 ? (
-            <div className="space-y-2">
-              {quotes.map((quote) => (
-                <StockRow
-                  key={quote.symbol}
-                  quote={quote}
-                  onTrade={openTrade}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-rh-muted text-sm">No quotes available.</p>
-          )}
-        </section>
+        {activeTab === "tracked" && (
+          <section>
+            {quotesLoading ? (
+              <p className="text-rh-muted text-sm">Loading…</p>
+            ) : trackedQuotes.length > 0 ? (
+              <div className="space-y-2">
+                {trackedQuotes.map((quote) => (
+                  <div key={quote.symbol}>
+                    <StockRow
+                      quote={quote}
+                      onTrade={openTrade}
+                      onExpand={(s) => setExpandedSymbol(expandedSymbol === s ? null : s)}
+                      isExpanded={expandedSymbol === quote.symbol}
+                      onUntrack={(s) => untrackMutation.mutate(s)}
+                      isTracked
+                    />
+                    {expandedSymbol === quote.symbol && (
+                      <StockExpandedView
+                        symbol={quote.symbol}
+                        quote={quote}
+                        position={positions.find((p) => p.symbol === quote.symbol)}
+                        onBuy={() => openTrade(quote.symbol, "buy")}
+                        onSell={() => openTrade(quote.symbol, "sell")}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-rh-muted text-sm">
+                No tracked stocks. Add symbols from All Stocks to watch them here.
+              </p>
+            )}
+          </section>
+        )}
+
+        {activeTab === "all" && (
+          <section>
+            {quotesError && (
+              <p className="text-rh-red text-sm mb-2">Failed to load prices. Retrying…</p>
+            )}
+            {quotesLoading ? (
+              <p className="text-rh-muted text-sm">Loading prices…</p>
+            ) : quotes && quotes.length > 0 ? (
+              <div className="space-y-2">
+                {quotes.map((quote) => (
+                  <div key={quote.symbol}>
+                    <StockRow
+                      quote={quote}
+                      onTrade={openTrade}
+                      onExpand={(s) => setExpandedSymbol(expandedSymbol === s ? null : s)}
+                      isExpanded={expandedSymbol === quote.symbol}
+                      onTrack={(s) => trackMutation.mutate(s)}
+                      onUntrack={(s) => untrackMutation.mutate(s)}
+                      isTracked={trackedSymbols.includes(quote.symbol)}
+                    />
+                    {expandedSymbol === quote.symbol && (
+                      <StockExpandedView
+                        symbol={quote.symbol}
+                        quote={quote}
+                        position={positions.find((p) => p.symbol === quote.symbol)}
+                        onBuy={() => openTrade(quote.symbol, "buy")}
+                        onSell={() => openTrade(quote.symbol, "sell")}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-rh-muted text-sm">No quotes available.</p>
+            )}
+          </section>
+        )}
       </main>
 
       {tradeSymbol && (
         <OrderModal
+          key={tradeSymbol}
           symbol={tradeSymbol}
           quote={quoteFor(tradeSymbol)}
+          initialSide={tradeSide}
           onClose={closeTrade}
         />
       )}
