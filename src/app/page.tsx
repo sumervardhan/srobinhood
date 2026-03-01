@@ -164,15 +164,14 @@ export default function HomePage() {
           <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
             {activeTab === "portfolio" && (
               <section className="flex flex-col min-h-0 flex-1">
-                <div className="shrink-0 px-2">
-                  <PortfolioChart />
-                </div>
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-6">
-                  {positionsLoading ? (
-                    <p className="text-rh-muted text-sm">Loading positions…</p>
-                  ) : positions.length > 0 ? (
-                    <div className="space-y-2 min-w-0 px-2">
-                      {livePositions.map((pos) => (
+                  <div className="px-2 space-y-4">
+                    <PortfolioChart />
+                    {positionsLoading ? (
+                      <p className="text-rh-muted text-sm">Loading positions…</p>
+                    ) : positions.length > 0 ? (
+                      <div className="space-y-2 min-w-0">
+                        {livePositions.map((pos) => (
                         <div key={pos.symbol} className="min-w-0">
                           <PositionRow
                             position={pos}
@@ -190,13 +189,14 @@ export default function HomePage() {
                             />
                           )}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-rh-muted text-sm">
-                      No positions yet. Buy stocks from All Stocks to build your portfolio.
-                    </p>
-                  )}
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-rh-muted text-sm">
+                        No positions yet. Buy stocks from All Stocks to build your portfolio.
+                      </p>
+                    )}
+                  </div>
                 </div>
               </section>
             )}
