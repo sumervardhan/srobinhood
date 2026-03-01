@@ -19,7 +19,7 @@ export function TimeRangeToggle({ value, onChange }: Props) {
           className={clsx(
             "px-2 py-1 text-xs font-medium rounded transition-colors",
             value === r
-              ? "bg-rh-card text-rh-white"
+              ? "bg-white/15"
               : "text-rh-muted hover:text-rh-white"
           )}
         >

@@ -43,3 +43,14 @@ export interface User {
   name: string | null;
   image: string | null;
 }
+
+export type AccountTransactionType = "deposit" | "withdrawal" | "buy" | "sell";
+
+export interface AccountTransaction {
+  id: string;
+  type: AccountTransactionType;
+  amount: number;
+  symbol?: string;
+  orderId?: string;
+  createdAt: string;
+}

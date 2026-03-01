@@ -18,8 +18,8 @@ type Point = { t: number; v: number };
 
 function formatTime(t: number, range: string) {
   const d = new Date(t);
-  if (range === "1D" || range === "5D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  if (range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (range === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric" });
+  if (range === "5D" || range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
 }
 
@@ -31,7 +31,7 @@ function formatValue(v: number) {
 
 export function PortfolioChart() {
   const [range, setRange] = useState<ChartRange>("1M");
-  const [data, setData] = useState<{ time: string; value: number; full: number }[]>([]);
+  const [data, setData] = useState<{ t: number; value: number; full: number }[]>([]);
 
   useEffect(() => {
     fetch(`/api/portfolio/chart?range=${range}`)
@@ -40,7 +40,7 @@ export function PortfolioChart() {
         const series = res.series ?? [];
         setData(
           series.map((p) => ({
-            time: formatTime(p.t, range),
+            t: p.t,
             value: p.v,
             full: p.v,
           }))
@@ -67,7 +67,7 @@ export function PortfolioChart() {
     <div className="rounded-xl bg-rh-card border border-rh-border p-4 mb-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-sm text-rh-muted">Portfolio Value</h3>
+          <h3 className="text-sm font-medium text-rh-white">Portfolio Value</h3>
           <p className="text-xl font-semibold text-rh-white">{formatValue(last)}</p>
           <p className={clsx("text-sm font-medium", isUp ? "text-rh-green" : "text-rh-red")}>
             {isUp ? "+" : ""}{formatValue(change)} ({(isUp ? "+" : "")}{changePct.toFixed(2)}%)
@@ -85,7 +85,14 @@ export function PortfolioChart() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fill: "#8a8a8a", fontSize: 10 }} />
+            <XAxis
+              dataKey="t"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tick={{ fill: "#8a8a8a", fontSize: 10 }}
+              tickFormatter={(ts) => formatTime(ts, range)}
+              interval="preserveStartEnd"
+            />
             <YAxis
               tick={{ fill: "#8a8a8a", fontSize: 10 }}
               tickFormatter={(v) => formatValue(v)}
@@ -93,7 +100,7 @@ export function PortfolioChart() {
             />
             <Tooltip
               formatter={(v: number) => [formatValue(v), "Value"]}
-              labelFormatter={(label) => label}
+              labelFormatter={(ts) => (typeof ts === "number" ? formatTime(ts, range) : String(ts))}
               contentStyle={{ backgroundColor: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px" }}
               labelStyle={{ color: "#8a8a8a" }}
             />

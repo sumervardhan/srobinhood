@@ -8,14 +8,29 @@ datasource db {
 }
 
 model User {
-  id        String   @id
-  email     String?
-  name      String?
-  image     String?
+  id             String              @id
+  email          String?
+  name           String?
+  image          String?
+  spendingPower  Float               @default(0)
+  createdAt      DateTime            @default(now())
+  positions      Position[]
+  orders         Order[]
+  tracked        TrackedStock[]
+  transactions   AccountTransaction[]
+}
+
+model AccountTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // deposit | withdrawal | buy | sell
+  amount    Float
+  symbol    String?  // for buy/sell
+  orderId   String?  // for buy/sell
   createdAt DateTime @default(now())
-  positions Position[]
-  orders    Order[]
-  tracked   TrackedStock[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([userId, type])
 }
 
 model Position {

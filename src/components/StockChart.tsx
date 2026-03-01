@@ -19,8 +19,8 @@ type Point = { t: number; v: number };
 
 function formatTime(t: number, range: string) {
   const d = new Date(t);
-  if (range === "1D" || range === "5D") return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  if (range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (range === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric" });
+  if (range === "5D" || range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
 }
 
@@ -30,7 +30,7 @@ type Props = {
 
 export function StockChart({ symbol }: Props) {
   const [range, setRange] = useState<ChartRange>("1M");
-  const [data, setData] = useState<{ time: string; value: number; full: number }[]>([]);
+  const [data, setData] = useState<{ t: number; value: number; full: number }[]>([]);
 
   useEffect(() => {
     fetch(`/api/stocks/${symbol}/chart?range=${range}`)
@@ -39,7 +39,7 @@ export function StockChart({ symbol }: Props) {
         const series = res.series ?? [];
         setData(
           series.map((p) => ({
-            time: formatTime(p.t, range),
+            t: p.t,
             value: p.v,
             full: p.v,
           }))
@@ -63,8 +63,11 @@ export function StockChart({ symbol }: Props) {
   const isUp = change >= 0;
 
   return (
-    <div className="rounded-xl bg-rh-card/50 border border-rh-border p-4">
-      <div className="flex items-center justify-between mb-4">
+    <div
+      className="rounded-xl bg-rh-card/50 border border-rh-border p-4"
+      style={{ viewTransitionName: `chart-${symbol}` } as React.CSSProperties}
+    >
+      <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-lg font-semibold text-rh-white">
             ${last.toFixed(2)}
@@ -85,7 +88,14 @@ export function StockChart({ symbol }: Props) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-            <XAxis dataKey="time" tick={{ fill: "#8a8a8a", fontSize: 10 }} />
+            <XAxis
+              dataKey="t"
+              type="number"
+              domain={["dataMin", "dataMax"]}
+              tick={{ fill: "#8a8a8a", fontSize: 10 }}
+              tickFormatter={(ts) => formatTime(ts, range)}
+              interval="preserveStartEnd"
+            />
             <YAxis
               tick={{ fill: "#8a8a8a", fontSize: 10 }}
               tickFormatter={(v) => `$${v.toFixed(2)}`}
@@ -93,7 +103,7 @@ export function StockChart({ symbol }: Props) {
             />
             <Tooltip
               formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
-              labelFormatter={(label) => label}
+              labelFormatter={(ts) => (typeof ts === "number" ? formatTime(ts, range) : String(ts))}
               contentStyle={{ backgroundColor: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px" }}
               labelStyle={{ color: "#8a8a8a" }}
             />

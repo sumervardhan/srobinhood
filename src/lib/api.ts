@@ -4,7 +4,7 @@
  * Replace fetch URLs or add BFF routes that read from your pipeline.
  */
 
-import type { OrderRequest, Order, Position, StockQuote } from "@/types";
+import type { OrderRequest, Order, Position, StockQuote, AccountTransaction } from "@/types";
 import type { SupportedSymbol } from "@/lib/constants";
 
 const BASE = typeof window === "undefined" ? "" : "";
@@ -45,4 +45,27 @@ export async function untrackSymbol(symbol: SupportedSymbol): Promise<void> {
   await api(`/api/portfolio/tracked?symbol=${encodeURIComponent(symbol)}`, {
     method: "DELETE",
   });
+}
+
+export async function getSpendingPower(): Promise<{ spendingPower: number }> {
+  return api<{ spendingPower: number }>("/api/portfolio/spending-power");
+}
+
+export async function deposit(amount: number): Promise<{ spendingPower: number }> {
+  return api<{ spendingPower: number }>("/api/portfolio/deposit", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function withdraw(amount: number): Promise<{ spendingPower: number }> {
+  return api<{ spendingPower: number }>("/api/portfolio/withdraw", {
+    method: "POST",
+    body: JSON.stringify({ amount }),
+  });
+}
+
+export async function getTransactions(types?: string[]): Promise<{ transactions: AccountTransaction[] }> {
+  const qs = types?.length ? `?types=${types.join(",")}` : "";
+  return api<{ transactions: AccountTransaction[] }>(`/api/portfolio/transactions${qs}`);
 }

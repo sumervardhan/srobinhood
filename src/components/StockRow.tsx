@@ -3,6 +3,7 @@
 import type { StockQuote } from "@/types";
 import { SUPPORTED_STOCKS } from "@/lib/constants";
 import { clsx } from "clsx";
+import { MiniChart } from "./MiniChart";
 
 type Props = {
   quote: StockQuote;
@@ -61,8 +62,8 @@ export function StockRow({ quote, onTrade, onExpand, isExpanded, onTrack, onUntr
   return (
     <div
       className={clsx(
-        "grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-4 px-4 rounded-xl bg-rh-card border border-rh-border cursor-pointer",
-        "hover:border-rh-muted/40 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg",
+        "grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-4 px-4 rounded-xl bg-rh-card border border-rh-border cursor-pointer min-w-0",
+        "hover:border-rh-muted/40 hover:scale-[1.02] transition-all duration-200 hover:shadow-lg",
         isExpanded && "rounded-b-none border-b-0"
       )}
       onClick={handleRowClick}
@@ -79,22 +80,10 @@ export function StockRow({ quote, onTrade, onExpand, isExpanded, onTrack, onUntr
     >
       <div className="min-w-0">
         <div className="font-semibold text-rh-white">{quote.symbol}</div>
-        <div className="text-sm text-rh-muted truncate max-w-[200px]">{name}</div>
+        <div className="text-sm text-rh-muted truncate">{name}</div>
       </div>
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="font-mono text-lg font-semibold text-rh-white">
-          {formatPrice(quote.price)}
-        </div>
-        <div
-          className={clsx(
-            "text-sm font-medium",
-            isUp ? "text-rh-green" : "text-rh-red"
-          )}
-        >
-          {formatChange(quote.change)} ({formatPercent(quote.changePercent)})
-        </div>
-      </div>
-      <div className="flex justify-end items-center gap-1">
+      <div className="flex justify-center items-center">
+        {onExpand && !isExpanded && <MiniChart symbol={quote.symbol} />}
         {isExpanded && (
           <span className="text-rh-muted" aria-hidden>
             <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,6 +91,21 @@ export function StockRow({ quote, onTrade, onExpand, isExpanded, onTrack, onUntr
             </svg>
           </span>
         )}
+      </div>
+      <div className="flex justify-end items-center gap-2 min-w-0">
+        <div className="flex flex-col items-end text-right">
+          <div className="font-mono text-lg font-semibold text-rh-white">
+            {formatPrice(quote.price)}
+          </div>
+          <div
+            className={clsx(
+              "text-sm font-medium",
+              isUp ? "text-rh-green" : "text-rh-red"
+            )}
+          >
+            {formatPercent(quote.changePercent)}
+          </div>
+        </div>
         {isTracked ? (
           <button
             type="button"
@@ -127,3 +131,4 @@ export function StockRow({ quote, onTrade, onExpand, isExpanded, onTrack, onUntr
     </div>
   );
 }
+

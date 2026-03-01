@@ -28,7 +28,7 @@ type Props = {
 
 export function StockExpandedView({ symbol, quote, position, onBuy, onSell }: Props) {
   return (
-    <div className="pt-2 pb-4 px-4 space-y-4 -mt-2 rounded-b-xl border-x border-b border-rh-border bg-rh-card/30">
+    <div className="pt-5 pb-4 px-4 space-y-4 -mt-2 rounded-b-xl border-x border-b border-rh-border bg-rh-card/30 min-w-0 overflow-x-hidden">
       <StockChart symbol={symbol} />
 
       <div className="flex flex-col gap-3">

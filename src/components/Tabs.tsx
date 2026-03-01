@@ -18,7 +18,7 @@ type Props = {
 export function Tabs({ active, onChange }: Props) {
   return (
     <nav
-      className="flex border-b border-rh-border mb-6"
+      className="flex border-b border-rh-border"
       role="tablist"
       aria-label="Main sections"
     >

@@ -49,6 +49,8 @@ export async function POST(req: Request) {
   }
 
   const qty = Math.round(quantity * 10000) / 10000;
+  const totalCost = filledPrice * qty;
+
   if (side === "sell") {
     const pos = await prisma.position.findUnique({
       where: { userId_symbol: { userId, symbol } },
@@ -56,6 +58,18 @@ export async function POST(req: Request) {
     if (!pos || pos.quantity < qty - 0.0001) {
       return NextResponse.json(
         { error: "Insufficient shares to sell" },
+        { status: 400 }
+      );
+    }
+  } else {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { spendingPower: true },
+    });
+    const spendingPower = user?.spendingPower ?? 0;
+    if (spendingPower < totalCost - 0.01) {
+      return NextResponse.json(
+        { error: "Insufficient spending power" },
         { status: 400 }
       );
     }
@@ -72,7 +86,18 @@ export async function POST(req: Request) {
     },
   });
 
+  const totalAmount = filledPrice * qty;
+
   if (side === "buy") {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { spendingPower: { decrement: totalAmount } },
+      }),
+      prisma.accountTransaction.create({
+        data: { userId, type: "buy", amount: totalAmount, symbol, orderId: order.id },
+      }),
+    ]);
     const existing = await prisma.position.findUnique({
       where: { userId_symbol: { userId, symbol } },
     });
@@ -89,6 +114,15 @@ export async function POST(req: Request) {
       });
     }
   } else {
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: userId },
+        data: { spendingPower: { increment: totalAmount } },
+      }),
+      prisma.accountTransaction.create({
+        data: { userId, type: "sell", amount: totalAmount, symbol, orderId: order.id },
+      }),
+    ]);
     const existing = await prisma.position.findUnique({
       where: { userId_symbol: { userId, symbol } },
     });

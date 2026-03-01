@@ -2,6 +2,7 @@
 
 import type { Position } from "@/types";
 import { clsx } from "clsx";
+import { MiniChart } from "./MiniChart";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("en-US", {
@@ -40,7 +41,7 @@ export function PositionRow({ position, onTrade, onExpand, isExpanded }: Props) 
   return (
     <div
       className={clsx(
-        "grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-3 px-4 rounded-xl bg-rh-card border border-rh-border cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:border-rh-muted/40 hover:shadow-lg",
+        "grid grid-cols-[1fr_auto_1fr] items-center gap-4 py-4 px-4 rounded-xl bg-rh-card border border-rh-border cursor-pointer min-w-0 transition-all duration-200 hover:border-rh-muted/40 hover:scale-[1.02] hover:shadow-lg",
         isExpanded && "rounded-b-none border-b-0"
       )}
       onClick={handleClick}
@@ -59,13 +60,8 @@ export function PositionRow({ position, onTrade, onExpand, isExpanded }: Props) 
           {formatQuantity(position.quantity)} share{position.quantity !== 1 ? "s" : ""}
         </div>
       </div>
-      <div className="flex flex-col items-center justify-center text-center">
-        <div className="font-mono text-rh-white">{formatMoney(position.marketValue)}</div>
-        <div className={clsx("text-sm font-medium", isUp ? "text-rh-green" : "text-rh-red")}>
-          {formatPercent(position.gainLossPercent)} today
-        </div>
-      </div>
-      <div className="flex justify-end">
+      <div className="flex justify-center items-center">
+        {onExpand && !isExpanded && <MiniChart symbol={position.symbol} />}
         {isExpanded && (
           <span className="text-rh-muted" aria-hidden>
             <svg className="w-4 h-4 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,6 +69,14 @@ export function PositionRow({ position, onTrade, onExpand, isExpanded }: Props) 
             </svg>
           </span>
         )}
+      </div>
+      <div className="flex justify-end items-center min-w-0">
+        <div className="flex flex-col items-end text-right">
+          <div className="font-mono text-rh-white">{formatMoney(position.marketValue)}</div>
+          <div className={clsx("text-sm font-medium", isUp ? "text-rh-green" : "text-rh-red")}>
+            {formatPercent(position.gainLossPercent)}
+          </div>
+        </div>
       </div>
     </div>
   );

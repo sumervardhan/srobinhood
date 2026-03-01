@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { placeOrder } from "@/lib/api";
+import { useSpendingPower } from "@/hooks/useSpendingPower";
 import { SUPPORTED_STOCKS, type SupportedSymbol } from "@/lib/constants";
 import type { StockQuote } from "@/types";
 import { clsx } from "clsx";
@@ -41,11 +42,14 @@ export function OrderModal({ symbol, quote, initialSide = "buy", onClose }: Prop
   const [mode, setMode] = useState<"shares" | "dollars">("shares");
   const [inputValue, setInputValue] = useState("");
   const queryClient = useQueryClient();
+  const { data: spendingData } = useSpendingPower();
 
   const mutate = useMutation({
     mutationFn: placeOrder,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio", "spending-power"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio", "transactions"] });
       queryClient.invalidateQueries({ queryKey: ["stocks", "quotes"] });
       onClose();
     },
@@ -187,6 +191,11 @@ export function OrderModal({ symbol, quote, initialSide = "buy", onClose }: Prop
                 <>{q < 1 ? q.toFixed(4) : q.toFixed(2)} share{q !== 1 ? "s" : ""} · </>
               )}
               Total: <span className="font-mono text-rh-white">{formatPrice(total)}</span>
+            </p>
+          )}
+          {side === "buy" && spendingData && (
+            <p className="text-sm text-rh-muted">
+              Buying power: <span className="font-mono text-rh-white">{formatPrice(spendingData.spendingPower)}</span>
             </p>
           )}
           <button

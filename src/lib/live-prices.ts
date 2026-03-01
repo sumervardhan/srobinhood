@@ -25,7 +25,7 @@ type Subscriber = (payload: NotifyPayload) => void;
 
 const ALPACA_FAIL_THRESHOLD = 3;
 
-const HEARTBEAT_MS = 60 * 1000; // 1 minute - keep stream alive when no new quotes (e.g. market closed)
+const HEARTBEAT_MS = 15 * 60 * 1000; // 15 min - keep stream alive when no new quotes (e.g. market closed)
 
 const state = {
   quotes: new Map<string, { price: number; prevClose: number }>(),
@@ -155,9 +155,9 @@ function startAlpacaWs() {
         state.wsCleanup = null;
         state.useAlpacaWs = false;
         state.useAlpaca = true;
-        state.interval = setInterval(tick, 2000);
+        state.interval = setInterval(tick, HEARTBEAT_MS);
         if (process.env.NODE_ENV === "development") {
-          console.log("[live-prices] Alpaca WebSocket failed, using REST polling");
+          console.log("[live-prices] Alpaca WebSocket failed, using REST polling every 15 min");
         }
       }
     );
@@ -169,7 +169,7 @@ function startAlpacaWs() {
     console.error("[live-prices] Alpaca WebSocket failed to start:", e);
     state.useAlpacaWs = false;
     state.useAlpaca = true;
-    state.interval = setInterval(tick, 2000);
+    state.interval = setInterval(tick, HEARTBEAT_MS);
   }
 }
 

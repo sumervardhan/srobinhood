@@ -9,6 +9,6 @@ export function usePositions() {
   return useQuery({
     queryKey: POSITIONS_KEY,
     queryFn: getPositions,
-    refetchInterval: 10000,
+    // No refetchInterval - positions only change on order; invalidated by OrderModal onSuccess
   });
 }
