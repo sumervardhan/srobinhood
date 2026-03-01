@@ -52,6 +52,9 @@ export function startAlpacaWebSocket(
   };
 
   ws.on("open", () => {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[alpaca-ws] Connected, sending auth…");
+    }
     ws.send(JSON.stringify({ action: "auth", key, secret }));
   });
 
@@ -60,8 +63,28 @@ export function startAlpacaWebSocket(
       const obj = msg as Record<string, unknown>;
       const type = obj?.T as string | undefined;
 
-      if (type === "success" && obj.msg === "authenticated") {
-        ws.send(JSON.stringify({ action: "subscribe", quotes: [...STOCK_SYMBOLS] }));
+      if (type === "success") {
+        if (obj.msg === "connected" && process.env.NODE_ENV === "development") {
+          console.log("[alpaca-ws] Server acknowledged connection");
+        }
+        if (obj.msg === "authenticated") {
+          if (process.env.NODE_ENV === "development") {
+            console.log("[alpaca-ws] Authenticated, subscribing to", STOCK_SYMBOLS.length, "symbols");
+          }
+          ws.send(JSON.stringify({ action: "subscribe", quotes: [...STOCK_SYMBOLS] }));
+        }
+      }
+
+      if (type === "error") {
+        const code = obj?.code ?? "?";
+        const msg = (obj?.msg ?? obj?.message ?? "unknown") as string;
+        console.error("[alpaca-ws] Server error:", code, msg);
+        closed = true; // prevent reconnect on 406 etc.
+        onError?.(new Error(`Alpaca stream: ${code} ${msg}`));
+      }
+
+      if (type === "subscription" && process.env.NODE_ENV === "development") {
+        console.log("[alpaca-ws] Subscription confirmed:", obj);
       }
 
       if (type === "q") {
@@ -78,11 +101,14 @@ export function startAlpacaWebSocket(
   });
 
   ws.on("error", (err) => {
-    console.error("[alpaca-ws] Error:", err);
+    console.error("[alpaca-ws] WebSocket error:", err.message);
     onError?.(err);
   });
 
-  ws.on("close", () => {
+  ws.on("close", (code, reason) => {
+    if (process.env.NODE_ENV === "development" && !closed) {
+      console.log("[alpaca-ws] Connection closed:", code, reason?.toString() || "");
+    }
     if (closed) return;
     reconnectTimeout = setTimeout(() => {
       if (!closed) {

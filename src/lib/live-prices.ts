@@ -27,15 +27,30 @@ const ALPACA_FAIL_THRESHOLD = 3;
 
 const HEARTBEAT_MS = 15 * 60 * 1000; // 15 min - keep stream alive when no new quotes (e.g. market closed)
 
-const state = {
-  quotes: new Map<string, { price: number; prevClose: number }>(),
-  subscribers: new Set<Subscriber>(),
-  interval: null as ReturnType<typeof setInterval> | null,
-  heartbeatInterval: null as ReturnType<typeof setInterval> | null,
-  wsCleanup: null as (() => void) | null,
-  useAlpaca: false,
-  useAlpacaWs: false,
-  alpacaFailCount: 0,
+/** Persists across Next.js hot reloads so we don't open duplicate Alpaca WebSocket connections */
+const GLOBAL_KEY = "__srobinhood_live_prices";
+const state = (
+  typeof globalThis !== "undefined" && (globalThis as Record<string, unknown>)[GLOBAL_KEY]
+    ? (globalThis as Record<string, unknown>)[GLOBAL_KEY]
+    : ((globalThis as Record<string, unknown>)[GLOBAL_KEY] = {
+        quotes: new Map<string, { price: number; prevClose: number }>(),
+        subscribers: new Set<Subscriber>(),
+        interval: null as ReturnType<typeof setInterval> | null,
+        heartbeatInterval: null as ReturnType<typeof setInterval> | null,
+        wsCleanup: null as (() => void) | null,
+        useAlpaca: false,
+        useAlpacaWs: false,
+        alpacaFailCount: 0,
+      })
+) as {
+  quotes: Map<string, { price: number; prevClose: number }>;
+  subscribers: Set<Subscriber>;
+  interval: ReturnType<typeof setInterval> | null;
+  heartbeatInterval: ReturnType<typeof setInterval> | null;
+  wsCleanup: (() => void) | null;
+  useAlpaca: boolean;
+  useAlpacaWs: boolean;
+  alpacaFailCount: number;
 };
 
 function init() {
@@ -142,7 +157,7 @@ function startAlpacaWs() {
       for (const { symbol, price, prevClose } of results) {
         state.quotes.set(symbol, { price, prevClose });
       }
-      notify(false);
+      notify(true); // WebSocket connected = live stream
     });
     state.wsCleanup = startAlpacaWebSocket(
       (update) => handleAlpacaQuote(update.symbol, update.bid, update.ask),
@@ -161,7 +176,7 @@ function startAlpacaWs() {
         }
       }
     );
-    state.heartbeatInterval = setInterval(() => notify(false), HEARTBEAT_MS);
+    state.heartbeatInterval = setInterval(() => notify(true), HEARTBEAT_MS);
     if (process.env.NODE_ENV === "development") {
       console.log("[live-prices] Alpaca WebSocket started");
     }
