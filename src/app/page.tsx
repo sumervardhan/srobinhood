@@ -19,7 +19,7 @@ import type { SupportedSymbol } from "@/lib/constants";
 
 export default function HomePage() {
   const { data: session, status } = useSessionWithTimeout();
-  const { data: quotes, isLoading: quotesLoading, error: quotesError, isLive, status: quoteStatus } = useLiveQuotes();
+  const { data: quotes, isLoading: quotesLoading, error: quotesError, isLive, status: quoteStatus, isPolling } = useLiveQuotes();
   const { data: positions = [], isLoading: positionsLoading } = usePositions();
   const { data: trackedSymbols = [] } = useTrackedSymbols();
   const queryClient = useQueryClient();
@@ -109,8 +109,8 @@ export default function HomePage() {
         <div className="flex items-center gap-3 mb-6">
           <Tabs active={activeTab} onChange={setActiveTab} />
           {isLive && (
-            <span className="ml-auto flex items-center gap-1.5 text-xs" aria-label={quoteStatus === "streaming" ? "Live streaming" : "Polling every 2 seconds"}>
-              {quoteStatus === "streaming" ? (
+            <span className="ml-auto flex items-center gap-1.5 text-xs" aria-label={quoteStatus === "live" ? "Real-time streaming" : isPolling ? "5 minute refresh" : "1 minute refresh"}>
+              {quoteStatus === "live" ? (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-rh-green animate-pulse" />
                   <span className="text-rh-green">Live</span>
@@ -118,7 +118,7 @@ export default function HomePage() {
               ) : (
                 <>
                   <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-                  <span className="text-yellow-500">2s Refresh</span>
+                  <span className="text-yellow-500">{isPolling ? "5m Refresh" : "1m Refresh"}</span>
                 </>
               )}
             </span>

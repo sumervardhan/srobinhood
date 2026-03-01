@@ -1,38 +1,35 @@
 /**
- * SSE stream for live quotes. Clients connect and receive price updates in real time.
- * Each connection runs its own send loop to avoid shared-state issues with Next.js.
+ * SSE stream for live quotes. Subscribes to live-prices for real-time push
+ * (Alpaca WebSocket) or periodic updates (REST/simulated/heartbeat).
  */
-import { getLiveQuotes } from "@/lib/live-prices";
+import { subscribe, getLiveQuotes } from "@/lib/live-prices";
 import type { StockQuote } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const SEND_INTERVAL_MS = 2000;
 
 export async function GET() {
   if (process.env.NODE_ENV === "development") {
     console.log("[quotes/stream] Client connected");
   }
   const encoder = new TextEncoder();
-  let intervalId: ReturnType<typeof setInterval> | null = null;
+  let unsubscribe: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = () => {
+      const send = (payload: { quotes: StockQuote[]; realtime: boolean }) => {
         try {
-          const quotes = getLiveQuotes();
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(quotes)}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         } catch {
           // stream closed
         }
       };
 
-      send();
-      intervalId = setInterval(send, SEND_INTERVAL_MS);
+      send({ quotes: getLiveQuotes(), realtime: false });
+      unsubscribe = subscribe(send);
     },
     cancel() {
-      if (intervalId) clearInterval(intervalId);
+      unsubscribe?.();
     },
   });
 

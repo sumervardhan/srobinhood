@@ -1,8 +1,9 @@
 /**
- * Live price feed. Uses Alpaca when configured, otherwise simulated random walk.
- * Replace with your streaming pipeline when ready.
+ * Live price feed. Uses Alpaca WebSocket when configured for real-time push,
+ * Alpaca REST polling as fallback, or simulated random walk.
  */
 import { fetchSnapshots, isAlpacaConfigured } from "@/lib/alpaca";
+import { startAlpacaWebSocket } from "@/lib/alpaca-websocket";
 import { SUPPORTED_STOCKS } from "@/lib/constants";
 import type { StockQuote } from "@/types";
 
@@ -19,15 +20,21 @@ const INITIAL: Record<string, { price: number; prevClose: number }> = {
   "BRK.B": { price: 412.0, prevClose: 410.8 },
 };
 
-type Subscriber = (quotes: StockQuote[]) => void;
+export type NotifyPayload = { quotes: StockQuote[]; realtime: boolean };
+type Subscriber = (payload: NotifyPayload) => void;
 
 const ALPACA_FAIL_THRESHOLD = 3;
+
+const HEARTBEAT_MS = 60 * 1000; // 1 minute - keep stream alive when no new quotes (e.g. market closed)
 
 const state = {
   quotes: new Map<string, { price: number; prevClose: number }>(),
   subscribers: new Set<Subscriber>(),
   interval: null as ReturnType<typeof setInterval> | null,
+  heartbeatInterval: null as ReturnType<typeof setInterval> | null,
+  wsCleanup: null as (() => void) | null,
   useAlpaca: false,
+  useAlpacaWs: false,
   alpacaFailCount: 0,
 };
 
@@ -50,7 +57,7 @@ function tickSimulated() {
     const newPrice = Math.max(1, data.price + delta);
     state.quotes.set(symbol, { ...data, price: newPrice });
   });
-  notify();
+  notify(false);
 }
 
 async function tickAlpaca() {
@@ -61,23 +68,24 @@ async function tickAlpaca() {
     for (const { symbol, price, prevClose } of results) {
       state.quotes.set(symbol, { price, prevClose });
     }
-    notify();
+    notify(false);
   } catch (e) {
     state.alpacaFailCount += 1;
-    console.error("[live-prices] Alpaca fetch failed:", e);
+    console.error("[live-prices] Alpaca REST fetch failed:", e);
     if (state.alpacaFailCount >= ALPACA_FAIL_THRESHOLD) {
       state.useAlpaca = false;
+      state.useAlpacaWs = false;
       state.alpacaFailCount = 0;
-      console.warn("[live-prices] Falling back to simulated prices after repeated Alpaca failures");
+      console.warn("[live-prices] Falling back to simulated prices");
     }
     tickSimulated();
   }
 }
 
 function tick() {
-  if (state.useAlpaca) {
+  if (state.useAlpaca && !state.useAlpacaWs) {
     void tickAlpaca();
-  } else {
+  } else if (!state.useAlpacaWs) {
     tickSimulated();
   }
 }
@@ -97,27 +105,87 @@ function toStockQuotes(): StockQuote[] {
   });
 }
 
-function notify() {
+function notify(realtime: boolean) {
   const quotes = toStockQuotes();
+  const payload: NotifyPayload = { quotes, realtime };
   state.subscribers.forEach((fn) => {
     try {
-      fn(quotes);
+      fn(payload);
     } catch (e) {
       console.error("[live-prices] subscriber error:", e);
     }
   });
 }
 
-function startTicker() {
-  if (state.interval) return;
-  state.useAlpaca = isAlpacaConfigured();
+let notifyTimeout: ReturnType<typeof setTimeout> | null = null;
+const NOTIFY_DEBOUNCE_MS = 50;
+
+function handleAlpacaQuote(symbol: string, bid: number, ask: number) {
   init();
-  notify();
+  const data = state.quotes.get(symbol);
+  if (!data) return;
+  const price = bid > 0 && ask > 0 ? (bid + ask) / 2 : bid > 0 ? bid : ask;
+  state.quotes.set(symbol, { ...data, price });
+  if (!notifyTimeout) {
+    notifyTimeout = setTimeout(() => {
+      notifyTimeout = null;
+      notify(true);
+    }, NOTIFY_DEBOUNCE_MS);
+  }
+}
+
+function startAlpacaWs() {
+  if (state.wsCleanup) return;
+  try {
+    void fetchSnapshots().then((results) => {
+      init();
+      for (const { symbol, price, prevClose } of results) {
+        state.quotes.set(symbol, { price, prevClose });
+      }
+      notify(false);
+    });
+    state.wsCleanup = startAlpacaWebSocket(
+      (update) => handleAlpacaQuote(update.symbol, update.bid, update.ask),
+      () => {
+        if (state.heartbeatInterval) {
+          clearInterval(state.heartbeatInterval);
+          state.heartbeatInterval = null;
+        }
+        state.wsCleanup?.();
+        state.wsCleanup = null;
+        state.useAlpacaWs = false;
+        state.useAlpaca = true;
+        state.interval = setInterval(tick, 2000);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[live-prices] Alpaca WebSocket failed, using REST polling");
+        }
+      }
+    );
+    state.heartbeatInterval = setInterval(() => notify(false), HEARTBEAT_MS);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[live-prices] Alpaca WebSocket started");
+    }
+  } catch (e) {
+    console.error("[live-prices] Alpaca WebSocket failed to start:", e);
+    state.useAlpacaWs = false;
+    state.useAlpaca = true;
+    state.interval = setInterval(tick, 2000);
+  }
+}
+
+function startTicker() {
+  if (state.interval || state.wsCleanup) return;
+  state.useAlpaca = isAlpacaConfigured();
 
   if (state.useAlpaca) {
-    void tickAlpaca();
-    state.interval = setInterval(tick, 2000);
+    state.useAlpacaWs = true;
+    init();
+    notify(false);
+    startAlpacaWs();
   } else {
+    state.useAlpaca = false;
+    init();
+    notify(false);
     state.interval = setInterval(tick, 1500);
   }
 }
@@ -136,7 +204,7 @@ export function getPriceForSymbol(symbol: string): number {
 export function subscribe(fn: Subscriber): () => void {
   startTicker();
   state.subscribers.add(fn);
-  fn(getLiveQuotes());
+  fn({ quotes: getLiveQuotes(), realtime: false });
   return () => {
     state.subscribers.delete(fn);
   };
