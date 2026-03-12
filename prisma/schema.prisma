@@ -18,6 +18,7 @@ model User {
   orders         Order[]
   tracked        TrackedStock[]
   transactions   AccountTransaction[]
+  snapshots      PortfolioSnapshot[]
 }
 
 model AccountTransaction {
@@ -56,6 +57,16 @@ model Order {
   status      String   @default("filled")
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model PortfolioSnapshot {
+  id     String   @id @default(cuid())
+  userId String
+  date   DateTime // normalized to midnight UTC — one row per user per calendar day
+  value  Float
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
   @@index([userId])
 }
 

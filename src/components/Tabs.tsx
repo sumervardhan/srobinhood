@@ -2,12 +2,13 @@
 
 import { clsx } from "clsx";
 
-export type TabId = "portfolio" | "tracked" | "all";
+export type TabId = "portfolio" | "tracked" | "all" | "backtest";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "portfolio", label: "Portfolio" },
   { id: "tracked", label: "Tracked Stocks" },
   { id: "all", label: "All Stocks" },
+  { id: "backtest", label: "Backtesting" },
 ];
 
 type Props = {

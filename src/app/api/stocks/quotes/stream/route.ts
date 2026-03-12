@@ -25,7 +25,6 @@ export async function GET() {
         }
       };
 
-      send({ quotes: getLiveQuotes(), realtime: false });
       unsubscribe = subscribe(send);
     },
     cancel() {

@@ -15,6 +15,8 @@ import { StockExpandedView } from "@/components/StockExpandedView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLiveQuotes, POLL_INTERVAL_MS_EXPORTED } from "@/hooks/useLiveQuotes";
 import { usePositions } from "@/hooks/usePositions";
+import { useSpendingPower } from "@/hooks/useSpendingPower";
+import { BacktestPanel } from "@/components/BacktestPanel";
 import { useTrackedSymbols } from "@/hooks/useTrackedSymbols";
 import { trackSymbol, untrackSymbol } from "@/lib/api";
 import type { SupportedSymbol } from "@/lib/constants";
@@ -23,6 +25,7 @@ export default function HomePage() {
   const { data: session, status } = useSessionWithTimeout();
   const { data: quotes, isLoading: quotesLoading, error: quotesError, isLive, status: quoteStatus, isPolling, lastPollAt } = useLiveQuotes();
   const { data: positions = [], isLoading: positionsLoading } = usePositions();
+  const { data: spendingPowerData } = useSpendingPower();
   const { data: trackedSymbols = [] } = useTrackedSymbols();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabId>("portfolio");
@@ -166,7 +169,7 @@ export default function HomePage() {
               <section className="flex flex-col min-h-0 flex-1">
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-6">
                   <div className="px-2 space-y-4">
-                    <PortfolioChart />
+                    <PortfolioChart liveValue={livePositions.length > 0 ? livePositions.reduce((sum, p) => sum + p.marketValue, 0) + (spendingPowerData?.spendingPower ?? 0) : undefined} />
                     {positionsLoading ? (
                       <p className="text-rh-muted text-sm">Loading positions…</p>
                     ) : positions.length > 0 ? (
@@ -275,6 +278,13 @@ export default function HomePage() {
                   ) : (
                     <p className="text-rh-muted text-sm">No quotes available.</p>
                   )}
+                </div>
+              </section>
+            )}
+            {activeTab === "backtest" && (
+              <section className="flex flex-col min-h-0 flex-1">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-2">
+                  <BacktestPanel />
                 </div>
               </section>
             )}

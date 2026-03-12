@@ -41,6 +41,7 @@ const state = (
         useAlpaca: false,
         useAlpacaWs: false,
         alpacaFailCount: 0,
+        simDayStartAt: Date.now() as number,
       })
 ) as {
   quotes: Map<string, { price: number; prevClose: number }>;
@@ -51,6 +52,7 @@ const state = (
   useAlpaca: boolean;
   useAlpacaWs: boolean;
   alpacaFailCount: number;
+  simDayStartAt: number;
 };
 
 function init() {
@@ -67,6 +69,14 @@ function init() {
 
 function tickSimulated() {
   init();
+  // Reset prevClose every 30 minutes to keep simulated changePercent realistic
+  const now = Date.now();
+  if (now - state.simDayStartAt > 30 * 60 * 1000) {
+    state.quotes.forEach((data, symbol) => {
+      state.quotes.set(symbol, { ...data, prevClose: data.price });
+    });
+    state.simDayStartAt = now;
+  }
   state.quotes.forEach((data, symbol) => {
     const delta = (Math.random() - 0.5) * (data.price * 0.001);
     const newPrice = Math.max(1, data.price + delta);
@@ -219,7 +229,7 @@ export function getPriceForSymbol(symbol: string): number {
 export function subscribe(fn: Subscriber): () => void {
   startTicker();
   state.subscribers.add(fn);
-  fn({ quotes: getLiveQuotes(), realtime: false });
+  fn({ quotes: getLiveQuotes(), realtime: state.useAlpacaWs });
   return () => {
     state.subscribers.delete(fn);
   };

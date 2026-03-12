@@ -50,6 +50,7 @@ export function OrderModal({ symbol, quote, initialSide = "buy", onClose }: Prop
       queryClient.invalidateQueries({ queryKey: ["portfolio", "positions"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio", "spending-power"] });
       queryClient.invalidateQueries({ queryKey: ["portfolio", "transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["portfolio", "chart"] });
       queryClient.invalidateQueries({ queryKey: ["stocks", "quotes"] });
       onClose();
     },

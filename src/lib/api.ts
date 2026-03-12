@@ -69,3 +69,7 @@ export async function getTransactions(types?: string[]): Promise<{ transactions:
   const qs = types?.length ? `?types=${types.join(",")}` : "";
   return api<{ transactions: AccountTransaction[] }>(`/api/portfolio/transactions${qs}`);
 }
+
+export async function getPortfolioChart(range: string): Promise<{ series: { t: number; v: number }[] }> {
+  return api<{ series: { t: number; v: number }[] }>(`/api/portfolio/chart?range=${range}`);
+}

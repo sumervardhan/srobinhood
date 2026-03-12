@@ -12,17 +12,11 @@ import {
   CartesianGrid,
 } from "recharts";
 import { TimeRangeToggle } from "./TimeRangeToggle";
+import { formatTime, computeTicks, DAY_MS } from "@/lib/chart-utils";
 import type { ChartRange } from "@/lib/chart-ranges";
 import type { SupportedSymbol } from "@/lib/constants";
 
 type Point = { t: number; v: number };
-
-function formatTime(t: number, range: string) {
-  const d = new Date(t);
-  if (range === "1D") return d.toLocaleTimeString("en-US", { hour: "numeric" });
-  if (range === "5D" || range === "1M" || range === "3M") return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return d.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
-}
 
 type Props = {
   symbol: SupportedSymbol;
@@ -61,6 +55,9 @@ export function StockChart({ symbol }: Props) {
   const change = last - first;
   const changePct = first > 0 ? (change / first) * 100 : 0;
   const isUp = change >= 0;
+  const color = isUp ? "#00c805" : "#f6465d";
+  const spanMs = data.length > 1 ? (data[data.length - 1]!.t - data[0]!.t) : DAY_MS;
+  const ticks = computeTicks(data);
 
   return (
     <div
@@ -83,8 +80,8 @@ export function StockChart({ symbol }: Props) {
           <AreaChart data={data} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
             <defs>
               <linearGradient id={`stockGradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#00c805" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="#00c805" stopOpacity={0} />
+                <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                <stop offset="100%" stopColor={color} stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
@@ -93,8 +90,8 @@ export function StockChart({ symbol }: Props) {
               type="number"
               domain={["dataMin", "dataMax"]}
               tick={{ fill: "#8a8a8a", fontSize: 10 }}
-              tickFormatter={(ts) => formatTime(ts, range)}
-              interval="preserveStartEnd"
+              ticks={ticks}
+              tickFormatter={(ts) => formatTime(ts, spanMs)}
             />
             <YAxis
               tick={{ fill: "#8a8a8a", fontSize: 10 }}
@@ -103,14 +100,14 @@ export function StockChart({ symbol }: Props) {
             />
             <Tooltip
               formatter={(v: number) => [`$${v.toFixed(2)}`, "Price"]}
-              labelFormatter={(ts) => (typeof ts === "number" ? formatTime(ts, range) : String(ts))}
+              labelFormatter={(ts) => (typeof ts === "number" ? formatTime(ts, spanMs) : String(ts))}
               contentStyle={{ backgroundColor: "#161616", border: "1px solid #2a2a2a", borderRadius: "8px" }}
               labelStyle={{ color: "#8a8a8a" }}
             />
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#00c805"
+              stroke={color}
               strokeWidth={2}
               fill={`url(#stockGradient-${symbol})`}
             />

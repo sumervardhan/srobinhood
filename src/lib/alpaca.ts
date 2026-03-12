@@ -81,6 +81,7 @@ export async function fetchBars(
   url.searchParams.set("end", end.toISOString().slice(0, 19) + "Z");
   url.searchParams.set("limit", String(limit));
   url.searchParams.set("feed", FEED);
+  url.searchParams.set("adjustment", "all"); // split + dividend adjusted
 
   const res = await fetch(url.toString(), {
     headers: getHeaders(),

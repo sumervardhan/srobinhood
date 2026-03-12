@@ -5,7 +5,7 @@
 import { NextResponse } from "next/server";
 import { fetchBars, isAlpacaConfigured } from "@/lib/alpaca";
 import { getPriceForSymbol } from "@/lib/quotes-server";
-import { STOCK_SYMBOLS } from "@/lib/constants";
+import { STOCK_SYMBOLS, SUPPORTED_STOCKS } from "@/lib/constants";
 
 const RANGE_MS: Record<string, number> = {
   "1D": 24 * 60 * 60 * 1000,
@@ -52,7 +52,10 @@ export async function GET(
     try {
       const now = new Date();
       const ms = RANGE_MS[range] ?? RANGE_MS["1M"];
-      const start = new Date(now.getTime() - ms);
+      const ipoDate = SUPPORTED_STOCKS.find((s) => s.symbol === symbol)?.ipoDate;
+      const start = range === "All" && ipoDate
+        ? new Date(ipoDate)
+        : new Date(now.getTime() - ms);
       const end = new Date(now.getTime() + 60_000);
 
       const timeframe = range === "1D" ? "1Min" : range === "5D" ? "1Hour" : "1Day";
