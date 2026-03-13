@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/backtest/cash
  * Insert a backdated deposit or withdrawal.

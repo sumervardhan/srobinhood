@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/backtest/events
  * Returns all orders and account transactions sorted chronologically.

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * Portfolio value over time.
  *

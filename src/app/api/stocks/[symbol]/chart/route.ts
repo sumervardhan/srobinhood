@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * Historical price data for a stock.
  * Uses Alpaca when configured, otherwise simulated data.
