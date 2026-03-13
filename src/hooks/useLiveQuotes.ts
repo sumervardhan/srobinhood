@@ -5,8 +5,19 @@ import type { StockQuote } from "@/types";
 import { getQuotes } from "@/lib/api";
 
 const STREAM_URL = "/api/stocks/quotes/stream";
-const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes - REST fallback when stream fails
-const STREAM_STALE_MS = 20 * 60 * 1000; // 20 min - must exceed heartbeat; fall back to REST if no message
+const POLL_INTERVAL_MS = 15 * 60 * 1000;
+const STREAM_STALE_MS = 20 * 60 * 1000;
+
+/**
+ * How often the UI flushes buffered price updates (ms).
+ * All quotes update simultaneously on each flush — prevents per-symbol re-renders
+ * and keeps the display readable at high update rates.
+ * Override with NEXT_PUBLIC_PRICE_THROTTLE_MS env var.
+ */
+export const PRICE_THROTTLE_MS =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS
+    ? parseInt(process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS, 10)
+    : 500;
 
 export type QuoteStatus = "live" | "polling";
 
@@ -17,16 +28,29 @@ export function useLiveQuotes() {
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [status, setStatus] = useState<QuoteStatus>("polling");
-  const [isPolling, setIsPolling] = useState(false); // true = REST fallback (15m), false = stream (live or 15m heartbeat)
+  const [isPolling, setIsPolling] = useState(false);
   const [lastPollAt, setLastPollAt] = useState<number | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const staleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Buffer for streaming quotes — flushed to state every PRICE_THROTTLE_MS
+  const pendingQuotesRef = useRef<StockQuote[] | null>(null);
 
   const applyQuotes = useCallback((data: StockQuote[]) => {
     setQuotes(data);
     setError(null);
     setIsLoading(false);
   }, []);
+
+  // Flush buffered quotes on a fixed interval so all symbols update simultaneously
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (pendingQuotesRef.current !== null) {
+        applyQuotes(pendingQuotesRef.current);
+        pendingQuotesRef.current = null;
+      }
+    }, PRICE_THROTTLE_MS);
+    return () => clearInterval(id);
+  }, [applyQuotes]);
 
   const startPolling = useCallback(() => {
     if (pollRef.current) return;
@@ -73,13 +97,19 @@ export function useLiveQuotes() {
     es.onmessage = (e) => {
       try {
         const parsed = JSON.parse(e.data) as { quotes?: StockQuote[]; realtime?: boolean };
-        const quotes = Array.isArray(parsed) ? parsed : parsed.quotes ?? [];
+        const incoming = Array.isArray(parsed) ? parsed : parsed.quotes ?? [];
         const realtime = parsed?.realtime === true;
-        applyQuotes(quotes);
+        // Buffer the incoming quotes — the flush interval applies them atomically
+        pendingQuotesRef.current = incoming;
         setStatus(realtime ? "live" : "polling");
         stopPolling();
         setLastPollAt(realtime ? null : Date.now());
         resetStaleTimer();
+        // On first message, flush immediately to remove loading state
+        if (isLoading) {
+          applyQuotes(incoming);
+          pendingQuotesRef.current = null;
+        }
       } catch {
         setError(new Error("Invalid quote data"));
       }
@@ -98,6 +128,7 @@ export function useLiveQuotes() {
       stopPolling();
       if (staleRef.current) clearTimeout(staleRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyQuotes, startPolling, stopPolling, resetStaleTimer]);
 
   return {

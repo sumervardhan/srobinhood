@@ -13,6 +13,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { TimeRangeToggle } from "./TimeRangeToggle";
+import { AnimatedPrice } from "./AnimatedPrice";
 import { formatTime, computeTicks, DAY_MS } from "@/lib/chart-utils";
 import { getPortfolioChart } from "@/lib/api";
 import type { ChartRange } from "@/lib/chart-ranges";
@@ -69,7 +70,7 @@ export function PortfolioChart({ liveValue }: Props) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-sm font-medium text-rh-white">Portfolio Value</h3>
-          <p className="text-xl font-semibold text-rh-white">{formatValue(displayValue)}</p>
+          <AnimatedPrice value={displayValue} className="text-xl font-semibold text-rh-white" />
           <p className={clsx("text-sm font-medium", isUp ? "text-rh-green" : "text-rh-red")}>
             {isUp ? "+" : ""}{formatValue(change)} ({(isUp ? "+" : "")}{changePct.toFixed(2)}%)
           </p>

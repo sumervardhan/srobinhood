@@ -4,6 +4,7 @@ import type { StockQuote } from "@/types";
 import { SUPPORTED_STOCKS } from "@/lib/constants";
 import { clsx } from "clsx";
 import { MiniChart } from "./MiniChart";
+import { AnimatedPrice } from "./AnimatedPrice";
 
 type Props = {
   quote: StockQuote;
@@ -94,9 +95,7 @@ export function StockRow({ quote, onTrade, onExpand, isExpanded, onTrack, onUntr
       </div>
       <div className="flex justify-end items-center gap-2 min-w-0">
         <div className="flex flex-col items-end text-right">
-          <div className="font-mono text-lg font-semibold text-rh-white">
-            {formatPrice(quote.price)}
-          </div>
+          <AnimatedPrice value={quote.price} className="text-lg font-semibold text-rh-white" />
           <div
             className={clsx(
               "text-sm font-medium",

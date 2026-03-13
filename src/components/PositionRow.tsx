@@ -3,6 +3,7 @@
 import type { Position } from "@/types";
 import { clsx } from "clsx";
 import { MiniChart } from "./MiniChart";
+import { AnimatedPrice } from "./AnimatedPrice";
 
 function formatMoney(n: number) {
   return new Intl.NumberFormat("en-US", {
@@ -72,7 +73,7 @@ export function PositionRow({ position, onTrade, onExpand, isExpanded }: Props) 
       </div>
       <div className="flex justify-end items-center min-w-0">
         <div className="flex flex-col items-end text-right">
-          <div className="font-mono text-rh-white">{formatMoney(position.marketValue)}</div>
+          <AnimatedPrice value={position.marketValue} className="text-rh-white" />
           <div className={clsx("text-sm font-medium", isUp ? "text-rh-green" : "text-rh-red")}>
             {formatPercent(position.gainLossPercent)}
           </div>
