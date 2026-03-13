@@ -1,0 +1,44 @@
+{
+  "name": "srobinhood",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "db:up": "docker compose up -d 2>/dev/null || docker-compose up -d",
+    "db:down": "docker compose down 2>/dev/null || docker-compose down",
+    "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
+    "db:studio": "dotenv -e .env.local -- prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.0.0",
+    "@tanstack/react-query": "^5.0.0",
+    "bufferutil": "^4.1.0",
+    "clsx": "^2.1.0",
+    "next": "^14.2.0",
+    "next-auth": "^4.24.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.15.4",
+    "utf-8-validate": "^6.0.6",
+    "ws": "^8.19.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.18.1",
+    "autoprefixer": "^10.4.0",
+    "dotenv-cli": "^7.4.2",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.2.0",
+    "postcss": "^8.4.0",
+    "prisma": "^5.0.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.0.0"
+  }
+}

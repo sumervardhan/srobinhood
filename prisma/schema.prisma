@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String              @id
+  email          String?
+  name           String?
+  image          String?
+  spendingPower  Float               @default(0)
+  createdAt      DateTime            @default(now())
+  positions      Position[]
+  orders         Order[]
+  tracked        TrackedStock[]
+  transactions   AccountTransaction[]
+  snapshots      PortfolioSnapshot[]
+}
+
+model AccountTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // deposit | withdrawal | buy | sell
+  amount    Float
+  symbol    String?  // for buy/sell
+  orderId   String?  // for buy/sell
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([userId, type])
+}
+
+model Position {
+  id          String   @id @default(cuid())
+  userId      String
+  symbol      String
+  quantity    Float
+  averageCost Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, symbol])
+  @@index([userId])
+}
+
+model Order {
+  id          String   @id @default(cuid())
+  userId      String
+  symbol      String
+  side        String
+  quantity    Float
+  filledPrice Float
+  status      String   @default("filled")
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model PortfolioSnapshot {
+  id     String   @id @default(cuid())
+  userId String
+  date   DateTime // normalized to midnight UTC — one row per user per calendar day
+  value  Float
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
+  @@index([userId])
+}
+
+model TrackedStock {
+  userId   String
+  symbol   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, symbol])
+  @@index([userId])
+}
