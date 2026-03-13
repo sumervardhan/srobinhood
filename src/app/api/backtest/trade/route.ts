@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * POST /api/backtest/trade
  * Insert a backdated buy or sell order.

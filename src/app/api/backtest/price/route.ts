@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/backtest/price?symbol=AAPL&date=2024-01-15
  * Returns the historical closing price for a symbol on or before the given date.
