@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "db:up": "docker compose up -d 2>/dev/null || docker-compose up -d",
     "db:down": "docker compose down 2>/dev/null || docker-compose down",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
