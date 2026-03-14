@@ -36,7 +36,7 @@ jobs:
 
       # Cache the Next.js build cache across runs for faster incremental builds
       - name: Cache Next.js build
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .next/cache
           key: nextjs-${{ runner.os }}-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.ts','**/*.tsx') }}
