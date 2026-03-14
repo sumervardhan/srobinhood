@@ -7,8 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  # Prisma needs a syntactically valid URL to generate the client.
-  # No real database is used during CI — all routes are server-rendered at runtime.
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ci?schema=public"
   # NextAuth only uses NEXTAUTH_SECRET at runtime (session signing), not at build time.
   # Hardcoded so Dependabot PRs (which have no access to repo secrets) don't fail the build.
@@ -16,6 +14,8 @@ env:
   NEXTAUTH_URL: "http://localhost:3000"
   # Bypass Google OAuth credential check during CI builds (no real auth needed at build time).
   ALLOW_DEV_LOGIN: "true"
+  # Opt into Node.js 24 for GitHub Actions runners ahead of the June 2026 forced migration.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   validate:
