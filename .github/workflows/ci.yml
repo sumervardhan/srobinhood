@@ -4,16 +4,18 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 env:
-  # Prisma needs a syntactically valid URL to generate the client.
-  # No real database is used during CI — all routes are server-rendered at runtime.
   DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ci?schema=public"
-  # NextAuth only uses these at runtime (session signing), not at build time.
-  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  # NextAuth only uses NEXTAUTH_SECRET at runtime (session signing), not at build time.
+  # Hardcoded so Dependabot PRs (which have no access to repo secrets) don't fail the build.
+  NEXTAUTH_SECRET: "ci-placeholder-not-used-at-build-time"
   NEXTAUTH_URL: "http://localhost:3000"
   # Bypass Google OAuth credential check during CI builds (no real auth needed at build time).
   ALLOW_DEV_LOGIN: "true"
+  # Opt into Node.js 24 for GitHub Actions runners ahead of the June 2026 forced migration.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   validate:
@@ -83,8 +85,26 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: srobinhood_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/srobinhood_e2e?schema=public"
       ALLOW_DEV_LOGIN: "true"
+      # Alpaca keys needed at runtime for live price data in E2E tests.
+      # Add these to Settings → Secrets → Dependabot so Dependabot PRs can also run E2E.
       ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
       ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
 
@@ -106,6 +126,9 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+
+      - name: Run database migrations
+        run: npx prisma migrate deploy
 
       - name: Build app
         run: npm run build

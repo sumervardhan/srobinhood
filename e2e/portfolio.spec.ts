@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Shared setup: log in via dev credentials before each test
+// Log in via dev credentials before each test
 test.beforeEach(async ({ page }) => {
   await page.goto("/login");
   const devLoginButton = page.getByRole("button", { name: /dev login/i });
@@ -10,26 +10,21 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe("Portfolio page", () => {
-  test("renders the main nav and tabs", async ({ page }) => {
-    await expect(page.getByRole("navigation")).toBeVisible();
-    // Tabs: Stocks / Portfolio / Orders
-    await expect(page.getByRole("tab", { name: /stocks/i })).toBeVisible();
-    await expect(page.getByRole("tab", { name: /portfolio/i })).toBeVisible();
+  test("renders the header and tab bar", async ({ page }) => {
+    // Nav is a <header> containing the sRobinhood brand link
+    await expect(page.getByRole("link", { name: "sRobinhood" }).first()).toBeVisible();
+    // Tabs rendered via role="tablist"
+    await expect(page.getByRole("tab", { name: "Portfolio" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "All Stocks" })).toBeVisible();
   });
 
   test("spending power card is visible", async ({ page }) => {
     await expect(page.getByText(/spending power/i)).toBeVisible();
   });
 
-  test("stock search input is present", async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search stocks/i);
-    await expect(searchInput).toBeVisible();
-  });
-
-  test("can search for a stock symbol", async ({ page }) => {
-    const searchInput = page.getByPlaceholder(/search stocks/i);
-    await searchInput.fill("AAPL");
-    // Expect AAPL to appear in the results list
-    await expect(page.getByText("AAPL")).toBeVisible({ timeout: 5000 });
+  test("All Stocks tab shows stock rows", async ({ page }) => {
+    await page.getByRole("tab", { name: "All Stocks" }).click();
+    // Stocks are listed as rows — wait for at least one ticker symbol to appear
+    await expect(page.getByText("AAPL")).toBeVisible({ timeout: 10000 });
   });
 });

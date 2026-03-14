@@ -19,8 +19,9 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL("/", { timeout: 10000 });
   });
 
-  test("redirects unauthenticated users to login", async ({ page }) => {
+  test("unauthenticated home page shows login prompt", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
+    // No middleware redirect — the page renders with a "Log in with Google" CTA
+    await expect(page.getByRole("link", { name: /log in with google/i })).toBeVisible();
   });
 });
