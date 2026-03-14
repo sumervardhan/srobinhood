@@ -11,7 +11,22 @@
     "db:up": "docker compose up -d 2>/dev/null || docker-compose up -d",
     "db:down": "docker compose down 2>/dev/null || docker-compose down",
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
-    "db:studio": "dotenv -e .env.local -- prisma studio"
+    "db:studio": "dotenv -e .env.local -- prisma studio",
+    "prepare": "husky",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css}": [
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "@prisma/client": "^5.0.0",
@@ -28,17 +43,28 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.0",
     "dotenv-cli": "^7.4.2",
     "eslint": "^8.0.0",
     "eslint-config-next": "^14.2.0",
+    "husky": "^9.1.7",
+    "jsdom": "^28.1.0",
+    "lint-staged": "^16.4.0",
     "postcss": "^8.4.0",
+    "prettier": "^3.8.1",
     "prisma": "^5.0.0",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.0",
+    "wait-on": "^9.0.4"
   }
 }

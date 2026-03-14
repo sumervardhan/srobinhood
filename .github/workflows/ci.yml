@@ -5,18 +5,18 @@ on:
     branches: [main]
   pull_request:
 
+env:
+  # Prisma needs a syntactically valid URL to generate the client.
+  # No real database is used during CI — all routes are server-rendered at runtime.
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ci?schema=public"
+  # NextAuth only uses these at runtime (session signing), not at build time.
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+  NEXTAUTH_URL: "http://localhost:3000"
+
 jobs:
   validate:
     name: Lint · Type-check · Build
     runs-on: ubuntu-latest
-
-    env:
-      # Prisma needs a syntactically valid URL to generate the client.
-      # No real database is used during CI — all routes are server-rendered at runtime.
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/ci?schema=public"
-      # NextAuth only uses these at runtime (session signing), not at build time.
-      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
-      NEXTAUTH_URL: "http://localhost:3000"
 
     steps:
       - name: Checkout
@@ -51,3 +51,73 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run unit tests
+        run: npm run test:run
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: validate
+
+    env:
+      ALLOW_DEV_LOGIN: "true"
+      ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+      ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run E2E tests
+        run: |
+          npm run start &
+          npx wait-on http://localhost:3000 --timeout 30000
+          PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
