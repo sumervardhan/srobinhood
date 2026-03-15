@@ -17,13 +17,22 @@ import { useLiveQuotes, POLL_INTERVAL_MS_EXPORTED } from "@/hooks/useLiveQuotes"
 import { usePositions } from "@/hooks/usePositions";
 import { useSpendingPower } from "@/hooks/useSpendingPower";
 import { BacktestPanel } from "@/components/BacktestPanel";
+import { AdminPanel } from "@/components/AdminPanel";
 import { useTrackedSymbols } from "@/hooks/useTrackedSymbols";
 import { trackSymbol, untrackSymbol } from "@/lib/api";
 import type { SupportedSymbol } from "@/lib/constants";
 
 export default function HomePage() {
   const { data: session, status } = useSessionWithTimeout();
-  const { data: quotes, isLoading: quotesLoading, error: quotesError, isLive, status: quoteStatus, isPolling, lastPollAt } = useLiveQuotes();
+  const {
+    data: quotes,
+    isLoading: quotesLoading,
+    error: quotesError,
+    isLive,
+    status: quoteStatus,
+    isPolling,
+    lastPollAt,
+  } = useLiveQuotes();
   const { data: positions = [], isLoading: positionsLoading } = usePositions();
   const { data: spendingPowerData } = useSpendingPower();
   const { data: trackedSymbols = [] } = useTrackedSymbols();
@@ -52,15 +61,20 @@ export default function HomePage() {
   }, []);
   const closeTrade = useCallback(() => setTradeSymbol(null), []);
 
-  const handleExpand = useCallback((symbol: SupportedSymbol) => {
-    const next = expandedSymbol === symbol ? null : symbol;
-    const update = () => setExpandedSymbol(next);
-    if (typeof document !== "undefined" && "startViewTransition" in document) {
-      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(update);
-    } else {
-      update();
-    }
-  }, [expandedSymbol]);
+  const handleExpand = useCallback(
+    (symbol: SupportedSymbol) => {
+      const next = expandedSymbol === symbol ? null : symbol;
+      const update = () => setExpandedSymbol(next);
+      if (typeof document !== "undefined" && "startViewTransition" in document) {
+        (
+          document as Document & { startViewTransition: (cb: () => void) => void }
+        ).startViewTransition(update);
+      } else {
+        update();
+      }
+    },
+    [expandedSymbol]
+  );
 
   const quoteFor = (symbol: SupportedSymbol) => quotes?.find((q) => q.symbol === symbol);
   const trackedQuotes = quotes?.filter((q) => trackedSymbols.includes(q.symbol)) ?? [];
@@ -117,9 +131,7 @@ export default function HomePage() {
       <>
         <Nav />
         <main className="max-w-4xl mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-semibold text-rh-white mb-2">
-            Trade top US stocks
-          </h1>
+          <h1 className="text-2xl font-semibold text-rh-white mb-2">Trade top US stocks</h1>
           <p className="text-rh-muted mb-6 max-w-md mx-auto">
             Sign in with Google to see live prices, your positions, and place market orders.
           </p>
@@ -134,26 +146,35 @@ export default function HomePage() {
     );
   }
 
-  const liveBadge = isLive ? (
-    <span
-      className="flex items-center gap-1.5 text-xs"
-      aria-label={quoteStatus === "live" ? "Real-time streaming" : `Next update in ${countdown}`}
-    >
-      {quoteStatus === "live" ? (
-        <>
-          <span className="w-1.5 h-1.5 rounded-full bg-rh-green animate-pulse" />
-          <span className="text-rh-green">Live</span>
-        </>
-      ) : (
-        <>
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
-          <span className="text-yellow-500">
-            Update in <span className="font-mono tabular-nums inline-block w-[3rem] text-left">{countdown}</span>
-          </span>
-        </>
-      )}
-    </span>
-  ) : undefined;
+  const liveBadge =
+    quoteStatus === "error" ? (
+      <span className="flex items-center gap-1.5 text-xs" aria-label="Error refreshing price data">
+        <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+        <span className="text-red-500">Error Refreshing Price Data</span>
+      </span>
+    ) : isLive ? (
+      <span
+        className="flex items-center gap-1.5 text-xs"
+        aria-label={quoteStatus === "live" ? "Real-time streaming" : `Next update in ${countdown}`}
+      >
+        {quoteStatus === "live" ? (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-rh-green animate-pulse" />
+            <span className="text-rh-green">Live</span>
+          </>
+        ) : (
+          <>
+            <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+            <span className="text-yellow-500">
+              Update in{" "}
+              <span className="font-mono tabular-nums inline-block w-[3rem] text-left">
+                {countdown}
+              </span>
+            </span>
+          </>
+        )}
+      </span>
+    ) : undefined;
 
   return (
     <>
@@ -169,29 +190,36 @@ export default function HomePage() {
               <section className="flex flex-col min-h-0 flex-1">
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-6">
                   <div className="px-2 space-y-4">
-                    <PortfolioChart liveValue={livePositions.length > 0 ? livePositions.reduce((sum, p) => sum + p.marketValue, 0) + (spendingPowerData?.spendingPower ?? 0) : undefined} />
+                    <PortfolioChart
+                      liveValue={
+                        livePositions.length > 0
+                          ? livePositions.reduce((sum, p) => sum + p.marketValue, 0) +
+                            (spendingPowerData?.spendingPower ?? 0)
+                          : undefined
+                      }
+                    />
                     {positionsLoading ? (
                       <p className="text-rh-muted text-sm">Loading positions…</p>
                     ) : positions.length > 0 ? (
                       <div className="space-y-2 min-w-0">
                         {livePositions.map((pos) => (
-                        <div key={pos.symbol} className="min-w-0">
-                          <PositionRow
-                            position={pos}
-                            onTrade={openTrade}
-                            onExpand={handleExpand}
-                            isExpanded={expandedSymbol === pos.symbol}
-                          />
-                          {expandedSymbol === pos.symbol && (
-                            <StockExpandedView
-                              symbol={pos.symbol}
-                              quote={quoteFor(pos.symbol)}
+                          <div key={pos.symbol} className="min-w-0">
+                            <PositionRow
                               position={pos}
-                              onBuy={() => openTrade(pos.symbol, "buy")}
-                              onSell={() => openTrade(pos.symbol, "sell")}
+                              onTrade={openTrade}
+                              onExpand={handleExpand}
+                              isExpanded={expandedSymbol === pos.symbol}
                             />
-                          )}
-                        </div>
+                            {expandedSymbol === pos.symbol && (
+                              <StockExpandedView
+                                symbol={pos.symbol}
+                                quote={quoteFor(pos.symbol)}
+                                position={pos}
+                                onBuy={() => openTrade(pos.symbol, "buy")}
+                                onSell={() => openTrade(pos.symbol, "sell")}
+                              />
+                            )}
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -285,6 +313,13 @@ export default function HomePage() {
               <section className="flex flex-col min-h-0 flex-1">
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-2">
                   <BacktestPanel />
+                </div>
+              </section>
+            )}
+            {activeTab === "admin" && (
+              <section className="flex flex-col min-h-0 flex-1">
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pt-2">
+                  <AdminPanel />
                 </div>
               </section>
             )}

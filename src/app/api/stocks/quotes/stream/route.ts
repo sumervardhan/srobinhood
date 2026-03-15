@@ -2,8 +2,8 @@
  * SSE stream for live quotes. Subscribes to live-prices for real-time push
  * (Alpaca WebSocket) or periodic updates (REST/simulated/heartbeat).
  */
-import { subscribe, getLiveQuotes } from "@/lib/live-prices";
-import type { StockQuote } from "@/types";
+import { subscribe } from "@/lib/live-prices";
+import type { NotifyPayload } from "@/lib/live-prices";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,7 +17,7 @@ export async function GET() {
 
   const stream = new ReadableStream({
     start(controller) {
-      const send = (payload: { quotes: StockQuote[]; realtime: boolean }) => {
+      const send = (payload: NotifyPayload) => {
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
         } catch {
