@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Portfolio value over time.
@@ -79,7 +79,9 @@ export async function GET(req: Request) {
         const prev = map.get(o.symbol) ?? 0;
         map.set(o.symbol, o.side === "buy" ? prev + o.quantity : prev - o.quantity);
       }
-      map.forEach((qty, sym) => { if (qty <= 0) map.delete(sym); });
+      map.forEach((qty, sym) => {
+        if (qty <= 0) map.delete(sym);
+      });
       return map;
     }
 
@@ -106,7 +108,9 @@ export async function GET(req: Request) {
         for (const sym of symbols) {
           barsBySymbol.set(sym, await fetchBars(sym, "1Min", start, end));
         }
-        const allTimes = [...new Set([...barsBySymbol.values()].flatMap((b) => b.map((x) => x.t)))].sort((a, b) => a - b);
+        const allTimes = [
+          ...new Set([...barsBySymbol.values()].flatMap((b) => b.map((x) => x.t))),
+        ].sort((a, b) => a - b);
         const series: { t: number; v: number }[] = [];
         for (const t of allTimes) {
           const held = positionsAt(t);
@@ -119,7 +123,7 @@ export async function GET(req: Request) {
           const total = stockValue + cashAt(t);
           if (total > 0) series.push({ t, v: Math.round(total * 100) / 100 });
         }
-        const quotes = getQuotesServer();
+        const quotes = await getQuotesServer();
         const currentHeld = positionsAt(now);
         let stockValue = 0;
         for (const [sym, qty] of currentHeld) {
@@ -128,7 +132,8 @@ export async function GET(req: Request) {
           stockValue += qty * (q?.price ?? fallback);
         }
         const currentTotal = stockValue + currentCash;
-        if (series.length > 0 && currentTotal > 0) series.push({ t: now, v: Math.round(currentTotal * 100) / 100 });
+        if (series.length > 0 && currentTotal > 0)
+          series.push({ t: now, v: Math.round(currentTotal * 100) / 100 });
         return NextResponse.json({ series });
       } catch (e) {
         console.warn("[portfolio/chart] 1D Alpaca failed:", e);
@@ -200,7 +205,7 @@ export async function GET(req: Request) {
     }
 
     // ── Build series from snapshot cache + live today ─────────────────────────
-    const quotes = getQuotesServer();
+    const quotes = await getQuotesServer();
     const currentHeld = positionsAt(now);
     let currentStockValue = 0;
     for (const [sym, qty] of currentHeld) {
