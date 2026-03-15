@@ -116,11 +116,21 @@ export function useLiveQuotes() {
         const source = parsed?.source;
 
         if (source === "error") {
-          // Data source failed on the server — show error badge, keep existing quotes visible.
+          // Data source failed on the server — show error badge, but still apply any quotes
+          // in the payload so stock rows remain visible (prices are stale/placeholder).
           // Track this so onerror doesn't flip back to "polling" if the stream then closes.
           serverErrorRef.current = true;
           setStatus("error");
-          setIsLoading(false);
+          const incoming = Array.isArray(parsed) ? parsed : (parsed.quotes ?? []);
+          if (incoming.length > 0) {
+            pendingQuotesRef.current = incoming;
+            if (isLoading) {
+              applyQuotes(incoming);
+              pendingQuotesRef.current = null;
+            }
+          } else {
+            setIsLoading(false);
+          }
           resetStaleTimer();
           return;
         }
