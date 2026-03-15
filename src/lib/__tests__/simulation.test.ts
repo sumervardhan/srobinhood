@@ -49,6 +49,17 @@ describe("getPreviousTradingDay", () => {
     const result = getPreviousTradingDay(sun);
     expect([0, 6]).not.toContain(result.getDay()); // result must be a weekday
   });
+
+  it("returns correct UTC date string regardless of local timezone offset", () => {
+    // Regression: using getDate/setDate (local time) + toISOString (UTC) caused
+    // off-by-one errors. E.g. Friday 22:00 UTC-8 = Saturday 06:00 UTC, so
+    // toISOString would return Saturday instead of Friday.
+    // Saturday night in UTC-8 (local) = Sunday 06:00 UTC
+    const saturdayNightUSWest = new Date("2025-01-18T06:00:00Z"); // Sat 2025-01-18 in UTC
+    const result = getPreviousTradingDay(saturdayNightUSWest);
+    // Prev trading day from Saturday should be Friday 2025-01-17
+    expect(result.toISOString().slice(0, 10)).toBe("2025-01-17");
+  });
 });
 
 describe("deltaPercents computation", () => {

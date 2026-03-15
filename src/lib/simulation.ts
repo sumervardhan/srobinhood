@@ -16,12 +16,13 @@ import { fetchBars } from "@/lib/alpaca";
 import { STOCK_SYMBOLS } from "@/lib/constants";
 import { prisma } from "@/lib/db";
 
-/** Returns the most recent weekday before `from` (skips Sat/Sun, no holiday logic). */
+/** Returns the most recent weekday before `from` (skips Sat/Sun, no holiday logic).
+ *  Uses UTC date arithmetic to stay consistent with toDateString's toISOString output. */
 export function getPreviousTradingDay(from: Date): Date {
   const d = new Date(from);
-  d.setDate(d.getDate() - 1);
-  while (d.getDay() === 0 || d.getDay() === 6) {
-    d.setDate(d.getDate() - 1);
+  d.setUTCDate(d.getUTCDate() - 1);
+  while (d.getUTCDay() === 0 || d.getUTCDay() === 6) {
+    d.setUTCDate(d.getUTCDate() - 1);
   }
   return d;
 }
