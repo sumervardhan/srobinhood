@@ -211,10 +211,19 @@ function startTicker() {
   state.useAlpaca = isAlpacaConfigured();
 
   if (state.useAlpaca) {
-    state.useAlpacaWs = true;
+    // On Vercel each serverless function instance has its own process, so every
+    // SSE connection would attempt a separate Alpaca WebSocket — quickly hitting
+    // the free-tier connection limit (406). Use REST polling instead.
+    const isVercel = !!process.env.VERCEL;
+    state.useAlpacaWs = !isVercel;
     init();
-    notify("rest"); // initial notify before WS connects
-    startAlpacaWs();
+    notify("rest"); // initial notify before data arrives
+    if (state.useAlpacaWs) {
+      startAlpacaWs();
+    } else {
+      void tickAlpaca(); // fetch immediately, then poll on the heartbeat interval
+      state.interval = setInterval(tick, HEARTBEAT_MS);
+    }
   } else {
     state.useAlpaca = false;
     init();

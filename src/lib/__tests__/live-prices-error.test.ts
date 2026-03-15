@@ -17,6 +17,7 @@ vi.mock("../constants", () => ({
 }));
 
 import { isAlpacaConfigured, fetchSnapshots } from "../alpaca";
+import { startAlpacaWebSocket } from "../alpaca-websocket";
 
 describe("live-prices error state", () => {
   beforeEach(() => {
@@ -64,6 +65,49 @@ describe("live-prices error state", () => {
     expect(errorPayload).toBeDefined();
     expect(errorPayload?.realtime).toBe(false);
 
+    unsub();
+  });
+});
+
+describe("live-prices Vercel REST-only mode", () => {
+  beforeEach(() => {
+    if (typeof globalThis !== "undefined") {
+      (globalThis as Record<string, unknown>)["__srobinhood_live_prices_v2"] = undefined;
+    }
+    vi.resetModules();
+    process.env.VERCEL = "1";
+  });
+
+  afterEach(() => {
+    delete process.env.VERCEL;
+  });
+
+  it("does not attempt WebSocket when VERCEL env var is set", async () => {
+    vi.mocked(isAlpacaConfigured).mockReturnValue(true);
+    vi.mocked(fetchSnapshots).mockResolvedValue([
+      { symbol: "AAPL", price: 150, prevClose: 148, updatedAt: new Date().toISOString() },
+      { symbol: "MSFT", price: 300, prevClose: 295, updatedAt: new Date().toISOString() },
+    ]);
+
+    const { subscribe } = await import("../live-prices");
+    const unsub = subscribe(() => {});
+
+    expect(vi.mocked(startAlpacaWebSocket)).not.toHaveBeenCalled();
+    unsub();
+  });
+
+  it("emits source:'rest' (not error) when Alpaca is configured on Vercel", async () => {
+    vi.mocked(isAlpacaConfigured).mockReturnValue(true);
+    vi.mocked(fetchSnapshots).mockResolvedValue([
+      { symbol: "AAPL", price: 150, prevClose: 148, updatedAt: new Date().toISOString() },
+      { symbol: "MSFT", price: 300, prevClose: 295, updatedAt: new Date().toISOString() },
+    ]);
+
+    const { subscribe } = await import("../live-prices");
+    const payloads: { source: string }[] = [];
+    const unsub = subscribe((p) => payloads.push({ source: p.source }));
+
+    expect(payloads[0].source).not.toBe("error");
     unsub();
   });
 });
