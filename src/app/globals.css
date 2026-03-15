@@ -38,15 +38,27 @@ body {
 
 /* Live price tick animation — background flash on price change */
 @keyframes tick-up {
-  from { background-color: rgba(0, 200, 5, 0.22); }
-  to   { background-color: transparent; }
+  from {
+    background-color: rgba(0, 200, 5, 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
 }
 @keyframes tick-down {
-  from { background-color: rgba(246, 70, 93, 0.22); }
-  to   { background-color: transparent; }
+  from {
+    background-color: rgba(246, 70, 93, 0.22);
+  }
+  to {
+    background-color: transparent;
+  }
 }
-.tick-up   { animation: tick-up   0.7s ease-out forwards; }
-.tick-down { animation: tick-down 0.7s ease-out forwards; }
+.tick-up {
+  animation: tick-up 0.7s ease-out forwards;
+}
+.tick-down {
+  animation: tick-down 0.7s ease-out forwards;
+}
 
 /*
  * Digit flip — slot-machine style roll for individual digits that change.
@@ -54,16 +66,52 @@ body {
  * Applied to the inner span; the wrapper has overflow:hidden to clip the travel.
  */
 @keyframes digit-flip-up {
-  0%   { transform: translateY(0);     opacity: 1; color: #00c805; }
-  40%  { transform: translateY(-110%); opacity: 0; color: #00c805; }
-  41%  { transform: translateY( 110%); opacity: 0; color: #00c805; }
-  100% { transform: translateY(0);     opacity: 1; color: #ffffff; }
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+    color: #00c805;
+  }
+  40% {
+    transform: translateY(-110%);
+    opacity: 0;
+    color: #00c805;
+  }
+  41% {
+    transform: translateY(110%);
+    opacity: 0;
+    color: #00c805;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    color: #ffffff;
+  }
 }
 @keyframes digit-flip-down {
-  0%   { transform: translateY(0);     opacity: 1; color: #f6465d; }
-  40%  { transform: translateY( 110%); opacity: 0; color: #f6465d; }
-  41%  { transform: translateY(-110%); opacity: 0; color: #f6465d; }
-  100% { transform: translateY(0);     opacity: 1; color: #ffffff; }
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+    color: #f6465d;
+  }
+  40% {
+    transform: translateY(110%);
+    opacity: 0;
+    color: #f6465d;
+  }
+  41% {
+    transform: translateY(-110%);
+    opacity: 0;
+    color: #f6465d;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+    color: #ffffff;
+  }
 }
-.digit-flip-up   { animation: digit-flip-up   500ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-.digit-flip-down { animation: digit-flip-down 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+.digit-flip-up {
+  animation: digit-flip-up var(--digit-flip-duration, 250ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.digit-flip-down {
+  animation: digit-flip-down var(--digit-flip-duration, 250ms) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

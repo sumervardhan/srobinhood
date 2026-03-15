@@ -34,24 +34,34 @@ function toDateString(d: Date): string {
 /**
  * Fetches 1-min bars for the previous trading day and upserts SimulationSnapshot rows.
  * Only overwrites if the stored tradingDate differs (weekend / same-day safety).
+ * Throws if no bars could be fetched for any symbol (surfaces Alpaca errors to the caller).
  */
 export async function fetchAndStoreSimulationData(): Promise<void> {
   const tradingDay = getPreviousTradingDay(new Date());
   const tradingDate = toDateString(tradingDay);
 
-  // Market session: 9:30–16:00 ET. Use conservative UTC window (13:00–21:30 UTC covers EST/EDT).
+  // Market session: 9:30–16:00 ET. Use conservative UTC window (covers EST/EDT).
   const start = new Date(`${tradingDate}T13:30:00Z`);
   const end = new Date(`${tradingDate}T20:00:00Z`);
+
+  let successCount = 0;
+  let firstError: unknown = null;
 
   await Promise.allSettled(
     STOCK_SYMBOLS.map(async (symbol) => {
       try {
         // Check if we already have this day's data
         const existing = await prisma.simulationSnapshot.findUnique({ where: { symbol } });
-        if (existing?.tradingDate === tradingDate) return; // already current
+        if (existing?.tradingDate === tradingDate) {
+          successCount++;
+          return; // already current
+        }
 
         const bars = await fetchBars(symbol, "1Min", start, end, 500);
-        if (bars.length === 0) return;
+        if (bars.length === 0) {
+          console.warn(`[simulation] No bars returned for ${symbol} on ${tradingDate}`);
+          return;
+        }
 
         const firstOpen = bars[0].o ?? bars[0].v;
         if (!firstOpen || firstOpen === 0) return;
@@ -63,11 +73,21 @@ export async function fetchAndStoreSimulationData(): Promise<void> {
           create: { symbol, tradingDate, deltaPercents },
           update: { tradingDate, deltaPercents },
         });
+        successCount++;
       } catch (e) {
+        if (!firstError) firstError = e;
         console.error(`[simulation] Failed to fetch/store bars for ${symbol}:`, e);
       }
     })
   );
+
+  if (successCount === 0) {
+    const msg =
+      firstError instanceof Error
+        ? firstError.message
+        : String(firstError ?? "No bar data returned");
+    throw new Error(`Simulation data unavailable: ${msg}`);
+  }
 }
 
 /** Loads simulation data from DB, returns symbol → deltaPercents map. */

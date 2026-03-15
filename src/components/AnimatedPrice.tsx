@@ -18,6 +18,16 @@
 import { useState, useEffect, useRef } from "react";
 import { clsx } from "clsx";
 
+const PRICE_THROTTLE_MS =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS
+    ? parseInt(process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS, 10)
+    : 500;
+
+const ANIM_MS =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_PRICE_ANIMATION_MS
+    ? parseInt(process.env.NEXT_PUBLIC_PRICE_ANIMATION_MS, 10)
+    : Math.round(PRICE_THROTTLE_MS * 0.5);
+
 function fmt(n: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -67,7 +77,10 @@ export function AnimatedPrice({ value, className }: Props) {
   const prevChars = prevStr ? prevStr.split("") : null;
 
   return (
-    <span className={clsx("font-mono tabular-nums inline-flex rounded-sm", className)}>
+    <span
+      className={clsx("font-mono tabular-nums inline-flex rounded-sm", className)}
+      style={{ "--digit-flip-duration": `${ANIM_MS}ms` } as React.CSSProperties}
+    >
       {/* key={epoch} remounts this span on every price change, giving all children
           a fresh mount so CSS digit animations play from the start. */}
       <span key={epoch} className="inline-flex">

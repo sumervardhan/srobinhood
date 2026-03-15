@@ -230,6 +230,11 @@ function startTicker() {
  * Called exclusively by `src/lib/simulation.ts` — live-prices.ts must not
  * import simulation.ts to avoid a circular dependency.
  */
+const SIM_TICK_MS =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS
+    ? parseInt(process.env.NEXT_PUBLIC_PRICE_THROTTLE_MS, 10)
+    : 500;
+
 export function setSimulationMode(enabled: boolean, deltaPercents: Map<string, number[]> | null) {
   state.simulationMode = enabled;
   if (enabled && deltaPercents) {
@@ -241,7 +246,7 @@ export function setSimulationMode(enabled: boolean, deltaPercents: Map<string, n
           tickSimulated(state.simulationDeltaPercents, state.simulationBarIndex);
           state.simulationBarIndex++;
         }
-      }, 1500);
+      }, SIM_TICK_MS);
     }
   } else {
     if (state.simulationInterval) {

@@ -46,10 +46,10 @@ export function AdminPanel() {
   const statusText = () => {
     if (!simState) return null;
     if (toggling) return simState.enabled ? "Disabling…" : "Loading data…";
-    if (simState.enabled && simState.tradingDate) {
+    if (!simState.enabled) return "Disabled";
+    if (simState.tradingDate)
       return `Replaying ${simState.tradingDate} (${simState.symbolCount} symbols)`;
-    }
-    return "Disabled";
+    return "Active";
   };
 
   return (
@@ -61,7 +61,7 @@ export function AdminPanel() {
           <div className="space-y-0.5">
             <p className="text-sm font-medium text-rh-white">Simulate Live Data</p>
             <p className="text-xs text-rh-muted">
-              Replay previous trading day price movements. Prices update every 1.5 s.
+              Replay previous trading day price movements at the live price refresh rate.
             </p>
           </div>
 

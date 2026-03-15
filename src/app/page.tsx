@@ -14,6 +14,7 @@ import { TransactionLog } from "@/components/TransactionLog";
 import { StockExpandedView } from "@/components/StockExpandedView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLiveQuotes, POLL_INTERVAL_MS_EXPORTED } from "@/hooks/useLiveQuotes";
+import { isMarketOpen } from "@/lib/market-hours";
 import { usePositions } from "@/hooks/usePositions";
 import { useSpendingPower } from "@/hooks/useSpendingPower";
 import { BacktestPanel } from "@/components/BacktestPanel";
@@ -146,8 +147,12 @@ export default function HomePage() {
     );
   }
 
+  // When market is closed, "polling" and "live" are visually equivalent —
+  // prices won't change regardless. Show green so the badge isn't misleadingly yellow.
+  const effectiveQuoteStatus = quoteStatus === "polling" && !isMarketOpen() ? "live" : quoteStatus;
+
   const liveBadge =
-    quoteStatus === "error" ? (
+    effectiveQuoteStatus === "error" ? (
       <span className="flex items-center gap-1.5 text-xs" aria-label="Error refreshing price data">
         <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
         <span className="text-red-500">Error Refreshing Price Data</span>
@@ -155,9 +160,11 @@ export default function HomePage() {
     ) : isLive ? (
       <span
         className="flex items-center gap-1.5 text-xs"
-        aria-label={quoteStatus === "live" ? "Real-time streaming" : `Next update in ${countdown}`}
+        aria-label={
+          effectiveQuoteStatus === "live" ? "Real-time streaming" : `Next update in ${countdown}`
+        }
       >
-        {quoteStatus === "live" ? (
+        {effectiveQuoteStatus === "live" ? (
           <>
             <span className="w-1.5 h-1.5 rounded-full bg-rh-green animate-pulse" />
             <span className="text-rh-green">Live</span>
