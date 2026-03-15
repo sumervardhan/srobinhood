@@ -4,3 +4,4 @@ node_modules
 .agents/
 skills-lock.json
 tsconfig.tsbuildinfo
+test-results/
