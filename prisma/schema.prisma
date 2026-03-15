@@ -76,3 +76,15 @@ model TrackedStock {
   @@id([userId, symbol])
   @@index([userId])
 }
+
+/**
+ * Persists intraday delta-percents for the latest trading day per symbol.
+ * One row per symbol — always overwritten when a newer tradingDate is available.
+ * Weekend / holiday guard: only overwritten when tradingDate changes.
+ */
+model SimulationSnapshot {
+  symbol        String   @id
+  tradingDate   String           // YYYY-MM-DD of the source trading day
+  deltaPercents Json             // number[] — % change from first bar's open for each 1-min bar
+  updatedAt     DateTime @updatedAt
+}

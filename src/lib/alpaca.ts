@@ -74,7 +74,7 @@ export async function fetchBars(
   start: Date,
   end: Date,
   limit = 10000
-): Promise<{ t: number; v: number }[]> {
+): Promise<{ t: number; v: number; o?: number }[]> {
   const url = new URL(`${DATA_BASE}/stocks/${encodeURIComponent(symbol)}/bars`);
   url.searchParams.set("timeframe", timeframe);
   url.searchParams.set("start", start.toISOString().slice(0, 19) + "Z");
@@ -96,5 +96,6 @@ export async function fetchBars(
   return bars.map((b) => ({
     t: new Date(b.t).getTime(),
     v: b.c,
+    o: b.o,
   }));
 }
