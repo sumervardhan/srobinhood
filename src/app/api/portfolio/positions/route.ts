@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -58,7 +58,7 @@ export async function GET() {
     where: { userId },
     select: { symbol: true, quantity: true, averageCost: true },
   });
-  const quotes = getQuotesServer();
+  const quotes = await getQuotesServer();
   const positions = buildPositions(
     rows.map((r) => ({ symbol: r.symbol, quantity: r.quantity, averageCost: r.averageCost })),
     quotes.map((q) => ({ symbol: q.symbol, price: q.price }))

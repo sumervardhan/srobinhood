@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 /**
  * Historical price data for a stock.
@@ -19,13 +19,17 @@ const RANGE_MS: Record<string, number> = {
   All: 5 * 365 * 24 * 60 * 60 * 1000,
 };
 
-function generateMockSeries(symbol: string, range: string): { t: number; v: number }[] {
+async function generateMockSeries(
+  symbol: string,
+  range: string
+): Promise<{ t: number; v: number }[]> {
   const now = Date.now();
   const ms = RANGE_MS[range] ?? RANGE_MS["1M"];
   const start = now - ms;
-  const currentPrice = getPriceForSymbol(symbol);
+  const currentPrice = await getPriceForSymbol(symbol);
   const basePrice = currentPrice * (0.85 + Math.random() * 0.2);
-  const points = range === "1D" ? 24 * 12 : range === "5D" ? 60 : range === "1M" || range === "3M" ? 90 : 120;
+  const points =
+    range === "1D" ? 24 * 12 : range === "5D" ? 60 : range === "1M" || range === "3M" ? 90 : 120;
   const step = ms / points;
   const series: { t: number; v: number }[] = [];
   let v = basePrice;
@@ -38,10 +42,7 @@ function generateMockSeries(symbol: string, range: string): { t: number; v: numb
   return series.sort((a, b) => a.t - b.t);
 }
 
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ symbol: string }> }
-) {
+export async function GET(req: Request, { params }: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await params;
   const url = new URL(req.url);
   const range = url.searchParams.get("range") ?? "1M";
@@ -55,9 +56,7 @@ export async function GET(
       const now = new Date();
       const ms = RANGE_MS[range] ?? RANGE_MS["1M"];
       const ipoDate = SUPPORTED_STOCKS.find((s) => s.symbol === symbol)?.ipoDate;
-      const start = range === "All" && ipoDate
-        ? new Date(ipoDate)
-        : new Date(now.getTime() - ms);
+      const start = range === "All" && ipoDate ? new Date(ipoDate) : new Date(now.getTime() - ms);
       const end = new Date(now.getTime() + 60_000);
 
       const timeframe = range === "1D" ? "1Min" : range === "5D" ? "1Hour" : "1Day";
@@ -71,6 +70,6 @@ export async function GET(
     }
   }
 
-  const series = generateMockSeries(symbol, range);
+  const series = await generateMockSeries(symbol, range);
   return NextResponse.json({ symbol, range, series });
 }

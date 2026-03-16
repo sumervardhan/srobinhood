@@ -1,4 +1,4 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   }
 
   const userId = session.user.id;
-  const filledPrice = getPriceForSymbol(symbol);
+  const filledPrice = await getPriceForSymbol(symbol);
 
   try {
     await prisma.user.upsert({
@@ -58,10 +58,7 @@ export async function POST(req: Request) {
       where: { userId_symbol: { userId, symbol } },
     });
     if (!pos || pos.quantity < qty - 0.0001) {
-      return NextResponse.json(
-        { error: "Insufficient shares to sell" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Insufficient shares to sell" }, { status: 400 });
     }
   } else {
     const user = await prisma.user.findUnique({
@@ -70,10 +67,7 @@ export async function POST(req: Request) {
     });
     const spendingPower = user?.spendingPower ?? 0;
     if (spendingPower < totalCost - 0.01) {
-      return NextResponse.json(
-        { error: "Insufficient spending power" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Insufficient spending power" }, { status: 400 });
     }
   }
 

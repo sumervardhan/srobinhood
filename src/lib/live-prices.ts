@@ -2,10 +2,19 @@
  * Live price feed. Uses Alpaca WebSocket when configured for real-time push,
  * Alpaca REST polling as fallback. Simulation fallback is intentionally removed —
  * if all data sources fail the "error" source is broadcast instead.
+ *
+ * When Redis is configured, every notify() call also publishes the payload to
+ * the PRICES_CHANNEL pub/sub channel and caches it at PRICES_SNAPSHOT_KEY so
+ * that other Vercel function instances (SSE routes) receive price updates
+ * without each needing their own Alpaca connection.
+ *
+ * On Vercel without Redis, the VERCEL env guard skips WebSocket and uses REST
+ * polling to avoid the 406 connection-limit error.
  */
 import { fetchSnapshots, isAlpacaConfigured } from "@/lib/alpaca";
 import { startAlpacaWebSocket } from "@/lib/alpaca-websocket";
 import { SUPPORTED_STOCKS } from "@/lib/constants";
+import { redis, PRICES_CHANNEL, PRICES_SNAPSHOT_KEY, PRICES_SNAPSHOT_TTL_S } from "@/lib/redis";
 import type { StockQuote } from "@/types";
 
 export type NotifySource = "realtime" | "rest" | "error";
@@ -136,6 +145,19 @@ function notify(source: NotifySource) {
   state.currentSource = source;
   const quotes = toStockQuotes();
   const payload: NotifyPayload = { quotes, realtime: source === "realtime", source };
+
+  // Publish to Redis so all other instances (SSE routes) receive this update.
+  // Fire-and-forget — a publish failure should not break local subscribers.
+  if (redis) {
+    const payloadStr = JSON.stringify(payload);
+    void redis
+      .multi()
+      .publish(PRICES_CHANNEL, payloadStr)
+      .set(PRICES_SNAPSHOT_KEY, payloadStr, "EX", PRICES_SNAPSHOT_TTL_S)
+      .exec()
+      .catch((e) => console.error("[live-prices] Redis publish failed:", e));
+  }
+
   state.subscribers.forEach((fn) => {
     try {
       fn(payload);
@@ -211,10 +233,21 @@ function startTicker() {
   state.useAlpaca = isAlpacaConfigured();
 
   if (state.useAlpaca) {
-    state.useAlpacaWs = true;
+    // On Vercel without Redis each serverless instance would attempt its own
+    // WebSocket, hitting Alpaca's free-tier connection limit (406). When Redis
+    // is configured the dedicated worker route owns the WebSocket; SSE routes
+    // subscribe to Redis instead of calling startTicker at all. The VERCEL
+    // guard here is a safety net for misconfigured deployments.
+    const isVercel = !!process.env.VERCEL;
+    state.useAlpacaWs = !isVercel;
     init();
-    notify("rest"); // initial notify before WS connects
-    startAlpacaWs();
+    notify("rest"); // initial notify before data arrives
+    if (state.useAlpacaWs) {
+      startAlpacaWs();
+    } else {
+      void tickAlpaca(); // fetch immediately, then poll on the heartbeat interval
+      state.interval = setInterval(tick, HEARTBEAT_MS);
+    }
   } else {
     state.useAlpaca = false;
     init();
