@@ -34,7 +34,7 @@ import type { StockQuote } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 800;
+export const maxDuration = 300;
 
 /** In-worker price state — isolated from other instances. */
 const prices = new Map<string, { price: number; prevClose: number }>();
@@ -136,7 +136,7 @@ async function runWorker(): Promise<void> {
     setTimeout(() => {
       wsCleanup();
       resolve();
-    }, 790_000);
+    }, 290_000);
   });
 
   if (lockRefreshInterval) clearInterval(lockRefreshInterval);
